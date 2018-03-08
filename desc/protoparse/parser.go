@@ -23,6 +23,49 @@ import (
 
 func init() {
 	protoErrorVerbose = true
+
+	// fix up the generated "token name" array so that error messages are nicer
+	setTokenName(_STRING_LIT, "string literal")
+	setTokenName(_INT_LIT, "int literal")
+	setTokenName(_FLOAT_LIT, "float literal")
+	setTokenName(_NAME, "identifier")
+	setTokenName(_FQNAME, "fully-qualified name")
+	setTokenName(_TYPENAME, "type name")
+	setTokenName(_TYPENAME, "error")
+	// for keywords, just show the keyword itself wrapped in quotes
+	for str, i := range keywords {
+		setTokenName(i, fmt.Sprintf(`"%s"`, str))
+	}
+}
+
+func setTokenName(token int, text string) {
+	// NB: this is based on logic in generated parse code that translates the
+	// int returned from the lexer into an internal token number.
+	var intern int
+	if token < len(protoTok1) {
+		intern = protoTok1[token]
+	} else {
+		if token >= protoPrivate {
+			if token < protoPrivate+len(protoTok2) {
+				intern = protoTok2[token-protoPrivate]
+			}
+		}
+		if intern == 0 {
+			for i := 0; i+1 < len(protoTok3); i += 2 {
+				if protoTok3[i] == token {
+					intern = protoTok3[i+1]
+					break
+				}
+			}
+		}
+	}
+
+	if intern >= 1 && intern-1 < len(protoToknames) {
+		protoToknames[intern-1] = text
+		return
+	}
+
+	panic(fmt.Sprintf("Unknown token value: %d", token))
 }
 
 // FileAccessor is an abstraction for opening proto source files. It takes the
@@ -682,8 +725,8 @@ func (r *parseResult) asExtensionRanges(node *extensionRangeNode) []*dpb.Descrip
 	ers := make([]*dpb.DescriptorProto_ExtensionRange, len(node.ranges))
 	for i, rng := range node.ranges {
 		er := &dpb.DescriptorProto_ExtensionRange{
-			Start: proto.Int32(int32(rng.st.val)),
-			End:   proto.Int32(int32(rng.en.val + 1)),
+			Start: proto.Int32(rng.st),
+			End:   proto.Int32(rng.en + 1),
 		}
 		if len(opts) > 0 {
 			er.Options = &dpb.ExtensionRangeOptions{UninterpretedOption: opts}
@@ -754,8 +797,8 @@ func (r *parseResult) asEnumDescriptor(en *enumNode) *dpb.EnumDescriptorProto {
 
 func (r *parseResult) asEnumReservedRange(rng *rangeNode) *dpb.EnumDescriptorProto_EnumReservedRange {
 	rr := &dpb.EnumDescriptorProto_EnumReservedRange{
-		Start: proto.Int32(int32(rng.st.val)),
-		End:   proto.Int32(int32(rng.en.val)),
+		Start: proto.Int32(rng.st),
+		End:   proto.Int32(rng.en),
 	}
 	r.putEnumReservedRangeNode(rr, rng)
 	return rr
@@ -824,8 +867,8 @@ func (r *parseResult) addMessageDecls(msgd *dpb.DescriptorProto, reservedNames *
 
 func (r *parseResult) asMessageReservedRange(rng *rangeNode) *dpb.DescriptorProto_ReservedRange {
 	rr := &dpb.DescriptorProto_ReservedRange{
-		Start: proto.Int32(int32(rng.st.val)),
-		End:   proto.Int32(int32(rng.en.val + 1)),
+		Start: proto.Int32(rng.st),
+		End:   proto.Int32(rng.en + 1),
 	}
 	r.putMessageReservedRangeNode(rr, rng)
 	return rr
@@ -1052,9 +1095,9 @@ func (r *parseResult) generateSourceCodeInfoForMessage(sci *sourceCodeInfo, msg 
 		rangePath := append(path, internal.Message_extensionRangeTag, int32(i))
 		rn := r.getExtensionRangeNode(er).(*rangeNode)
 		sci.newLoc(rn, rangePath)
-		sci.newLoc(rn.st, append(rangePath, internal.ExtensionRange_startTag))
-		if rn.st != rn.en {
-			sci.newLoc(rn.en, append(rangePath, internal.ExtensionRange_endTag))
+		sci.newLoc(rn.stNode, append(rangePath, internal.ExtensionRange_startTag))
+		if rn.stNode != rn.enNode {
+			sci.newLoc(rn.enNode, append(rangePath, internal.ExtensionRange_endTag))
 		}
 		// now we have to find the extension decl and options that correspond to this range :(
 		for _, d := range decls {
@@ -1081,9 +1124,9 @@ func (r *parseResult) generateSourceCodeInfoForMessage(sci *sourceCodeInfo, msg 
 		rangePath := append(path, internal.Message_reservedRangeTag, int32(i))
 		rn := r.getMessageReservedRangeNode(rr).(*rangeNode)
 		sci.newLoc(rn, rangePath)
-		sci.newLoc(rn.st, append(rangePath, internal.ReservedRange_startTag))
-		if rn.st != rn.en {
-			sci.newLoc(rn.en, append(rangePath, internal.ReservedRange_endTag))
+		sci.newLoc(rn.stNode, append(rangePath, internal.ReservedRange_startTag))
+		if rn.stNode != rn.enNode {
+			sci.newLoc(rn.enNode, append(rangePath, internal.ReservedRange_endTag))
 		}
 	}
 
@@ -1122,9 +1165,9 @@ func (r *parseResult) generateSourceCodeInfoForEnum(sci *sourceCodeInfo, enum *d
 		rangePath := append(path, internal.Enum_reservedRangeTag, int32(i))
 		rn := r.getEnumReservedRangeNode(rr).(*rangeNode)
 		sci.newLoc(rn, rangePath)
-		sci.newLoc(rn.st, append(rangePath, internal.ReservedRange_startTag))
-		if rn.st != rn.en {
-			sci.newLoc(rn.en, append(rangePath, internal.ReservedRange_endTag))
+		sci.newLoc(rn.stNode, append(rangePath, internal.ReservedRange_startTag))
+		if rn.stNode != rn.enNode {
+			sci.newLoc(rn.enNode, append(rangePath, internal.ReservedRange_endTag))
 		}
 	}
 
