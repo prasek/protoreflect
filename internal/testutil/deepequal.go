@@ -50,9 +50,11 @@ func deepEqual(t *testing.T, exp, act interface{}, assert bool, msg interface{})
 
 		red.Printf("\n\n==============================================================\n")
 		if msg != "" {
-			red.Printf("%s:%d: FAIL: Not Equals (%v/%v) [%v]\n", filepath.Base(file), line, reflect.TypeOf(exp), reflect.TypeOf(act), msg)
+			red.Printf("%s:%d: FAIL: Not Equals (%v/%v) [%v]\n",
+				filepath.Base(file), line, reflect.TypeOf(exp), reflect.TypeOf(act), msg)
 		} else {
-			red.Printf("%s:%d: FAIL: Not Equals (%v/%v) \n", filepath.Base(file), line, reflect.TypeOf(exp), reflect.TypeOf(act))
+			red.Printf("%s:%d: FAIL: Not Equals (%v/%v) \n",
+				filepath.Base(file), line, reflect.TypeOf(exp), reflect.TypeOf(act))
 		}
 		red.Printf("==============================================================\n\n")
 

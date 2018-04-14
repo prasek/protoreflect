@@ -53,7 +53,7 @@ declare -A TESTS_FAILED
 TESTFLAGS="-v -race"
 
 for dir in $VETDIRS; do
-    echo '+ skipping go vet' "${DIR}/${dir#./}"
+    echo '+ skipping go vet' "./${dir#./}"
     #go vet "${REPO}/${dir#./}"
     if [ $? != 0 ]; then
         TESTS_FAILED["${dir}"]="go vet failed"
@@ -67,7 +67,7 @@ DIR_ID=0
 for dir in $TESTDIRS; do
     DIR_ID=$(expr $DIR_ID + 1)
 
-    echo '+ go test' $TESTFLAGS "${DIR}/${dir#./}"
+    echo '+ go test' $TESTFLAGS "./${dir#./}"
     go test -i "${REPO}/${dir#./}" >& /dev/null # install dependencies, don't execute
     go test ${TESTFLAGS} "${REPO}/${dir#./}" >& test.log
 

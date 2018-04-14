@@ -15,30 +15,26 @@ import (
 // These are standard protos included with protoc, but older versions of their
 // respective packages registered them using incorrect paths.
 var StdFileAliases = map[string]string{
-	// Files for the github.com/gogo/protobuf/types package at one point were
-	// registered using the path where the proto files are mirrored in GOPATH,
-	// inside the gogo/protobuf repo.
-	// (Fixed as of https://github.com/gogo/protobuf/pull/412)
-	"google/protobuf/any.proto":       "any.proto",
-	"google/protobuf/duration.proto":  "duration.proto",
-	"google/protobuf/empty.proto":     "empty.proto",
-	"google/protobuf/struct.proto":    "struct.proto",
-	"google/protobuf/timestamp.proto": "timestamp.proto",
-	"google/protobuf/wrappers.proto":  "wrappers.proto",
-	// Files for the google.golang.org/genproto/protobuf package at one point
-	// were registered with an anomalous "src/" prefix.
-	// (Fixed as of https://github.com/google/go-genproto/pull/31)
-	"google/protobuf/api.proto":            "src/google/protobuf/api.proto",
-	"google/protobuf/field_mask.proto":     "src/google/protobuf/field_mask.proto",
-	"google/protobuf/source_context.proto": "src/google/protobuf/source_context.proto",
-	"google/protobuf/type.proto":           "src/google/protobuf/type.proto",
+	// File mappings for gogo/protobuf v1.0.0 nuances
+	// as populated by proto.RegisterFile() from the pb.go files
+	// in gogo/protobuf packages: types, descriptor, and plugin.
 
-	//File in gogo protobuf are registered without any prefixes now
 	"google/protobuf/descriptor.proto":      "descriptor.proto",
 	"google/protobuf/compiler/plugin.proto": "plugin.proto",
 
-	// Other standard files (descriptor.proto and compiler/plugin.proto) are
-	// registered correctly, so we don't need rules for them here.
+	/*
+		//the types pb.go files are working fine for gogo v1.0.0
+		"google/protobuf/any.proto":             "any.proto",
+		"google/protobuf/api.proto":             "api.proto",
+		"google/protobuf/duration.proto":        "duration.proto",
+		"google/protobuf/empty.proto":           "empty.proto",
+		"google/protobuf/empty.proto":           "field_mask.proto",
+		"google/protobuf/struct.proto":          "source_context.proto",
+		"google/protobuf/struct.proto":          "struct.proto",
+		"google/protobuf/timestamp.proto":       "timestamp.proto",
+		"google/protobuf/wrappers.proto":        "type.proto",
+		"google/protobuf/wrappers.proto":        "wrappers.proto",
+	*/
 }
 
 func init() {
