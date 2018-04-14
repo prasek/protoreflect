@@ -13,5 +13,10 @@ before_install:
   - mkdir -p $TRAVIS_BUILD_DIR $GOPATH/src/github.com/jhump
   - test ! -d $GOPATH/src/github.com/jhump/protoreflect && mv $TRAVIS_BUILD_DIR $GOPATH/src/github.com/jhump/protoreflect || true
 
+install:
+  - go get -v github.com/Masterminds/glide
+  - cd $GOPATH/src/github.com/Masterminds/glide && git checkout tags/0.13.1 && go install && cd -
+  - glide install
+
 script:
   - ./ci.sh
