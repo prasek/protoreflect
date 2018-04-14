@@ -1,5 +1,5 @@
 # Protocol Buffer and GRPC Reflection
-[![Build Status](https://travis-ci.org/jhump/protoreflect.svg?branch=master)](https://travis-ci.org/jhump/protoreflect/branches)
+[![Build Status](https://travis-ci.org/prasek/protoreflect.svg?branch=master)](https://travis-ci.org/prasek/protoreflect/branches)
 
 ----
 ## Forked to work with gogo/protobuf
