@@ -1,2 +1,3 @@
 internal/testprotos/protoc
+vendor
 test.log
