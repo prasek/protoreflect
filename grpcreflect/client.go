@@ -1,5 +1,6 @@
 package grpcreflect
 
+/*
 import (
 	"bytes"
 	"fmt"
@@ -8,8 +9,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
-	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/gogo/protobuf/proto"
+	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
@@ -141,9 +142,12 @@ func NewClient(ctx context.Context, stub rpb.ServerReflectionClient) *Client {
 // FileByFilename asks the server for a file descriptor for the proto file with
 // the given name.
 func (cr *Client) FileByFilename(filename string) (*desc.FileDescriptor, error) {
+	fmt.Printf("---------------------\n")
+	fmt.Printf("FileByName: %v\n", filename)
 	// hit the cache first
 	cr.cacheMu.RLock()
 	if fd, ok := cr.filesByName[filename]; ok {
+		fmt.Printf(" - found cached file %v\n", filename)
 		cr.cacheMu.RUnlock()
 		return fd, nil
 	}
@@ -151,6 +155,7 @@ func (cr *Client) FileByFilename(filename string) (*desc.FileDescriptor, error) 
 	cr.cacheMu.RUnlock()
 	// not there? see if we've downloaded the proto
 	if ok {
+		fmt.Printf(" - found cached proto by name %v\n", filename)
 		return cr.descriptorFromProto(fdp)
 	}
 
@@ -159,6 +164,7 @@ func (cr *Client) FileByFilename(filename string) (*desc.FileDescriptor, error) 
 			FileByFilename: filename,
 		},
 	}
+	fmt.Printf(" - get and cache %v\n", filename)
 	fd, err := cr.getAndCacheFileDescriptors(req, filename, "")
 	if isNotFound(err) {
 		// file not found? see if we can look up via alternate name
@@ -238,11 +244,14 @@ func (cr *Client) FileContainingExtension(extendedMessageName string, extensionN
 func (cr *Client) getAndCacheFileDescriptors(req *rpb.ServerReflectionRequest, expectedName, alias string) (*desc.FileDescriptor, error) {
 	resp, err := cr.send(req)
 	if err != nil {
+		fmt.Printf(" - send error: %v\n", err)
+		fmt.Printf(" - req: %#v\n", req)
 		return nil, err
 	}
 
 	fdResp := resp.GetFileDescriptorResponse()
 	if fdResp == nil {
+		fmt.Printf(" - protocol error\n")
 		return nil, &ProtocolError{reflect.TypeOf(fdResp).Elem()}
 	}
 
@@ -664,3 +673,4 @@ func (mde msgDescriptorExtensions) nestedScopes() []extensionScope {
 	}
 	return scopes
 }
+*/

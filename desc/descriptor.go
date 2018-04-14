@@ -11,8 +11,8 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/proto"
-	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/gogo/protobuf/proto"
+	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 
 	. "github.com/jhump/protoreflect/desc/internal"
 	"github.com/jhump/protoreflect/internal"
@@ -1680,6 +1680,7 @@ func toFileDescriptorLocked(fd *dpb.FileDescriptorProto) (*FileDescriptor, error
 	deps := make([]*FileDescriptor, len(fd.GetDependency()))
 	for i, dep := range fd.GetDependency() {
 		var err error
+		//fmt.Printf("Loading dependency: %v\n", dep)
 		deps[i], err = loadFileDescriptorLocked(dep)
 		if err != nil {
 			return nil, err
@@ -1816,7 +1817,7 @@ type protoEnum interface {
 }
 
 // NB: There is no LoadEnumDescriptor that takes a fully-qualified enum name because
-// it is not useful since protoc-gen-go does not expose the name anywhere in generated
+// it is not useful since protoc-gen-gogo does not expose the name anywhere in generated
 // code or register it in a way that is it accessible for reflection code. This also
 // means we have to cache enum descriptors differently -- we can only cache them as
 // they are requested, as opposed to caching all enum types whenever a file descriptor

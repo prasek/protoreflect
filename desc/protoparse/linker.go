@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/gogo/protobuf/proto"
+	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/desc/internal"

@@ -4,14 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/protoc-gen-go/descriptor"
-	"github.com/golang/protobuf/ptypes/any"
-	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/golang/protobuf/ptypes/struct"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/internal/testprotos"
@@ -19,22 +14,22 @@ import (
 )
 
 var wellKnownTypes = []proto.Message{
-	(*wrappers.BoolValue)(nil),
-	(*wrappers.BytesValue)(nil),
-	(*wrappers.StringValue)(nil),
-	(*wrappers.FloatValue)(nil),
-	(*wrappers.DoubleValue)(nil),
-	(*wrappers.Int32Value)(nil),
-	(*wrappers.Int64Value)(nil),
-	(*wrappers.UInt32Value)(nil),
-	(*wrappers.UInt64Value)(nil),
-	(*timestamp.Timestamp)(nil),
-	(*duration.Duration)(nil),
-	(*any.Any)(nil),
-	(*empty.Empty)(nil),
-	(*structpb.Struct)(nil),
-	(*structpb.Value)(nil),
-	(*structpb.ListValue)(nil),
+	(*types.BoolValue)(nil),
+	(*types.BytesValue)(nil),
+	(*types.StringValue)(nil),
+	(*types.FloatValue)(nil),
+	(*types.DoubleValue)(nil),
+	(*types.Int32Value)(nil),
+	(*types.Int64Value)(nil),
+	(*types.UInt32Value)(nil),
+	(*types.UInt64Value)(nil),
+	(*types.Timestamp)(nil),
+	(*types.Duration)(nil),
+	(*types.Any)(nil),
+	(*types.Empty)(nil),
+	(*types.Struct)(nil),
+	(*types.Value)(nil),
+	(*types.ListValue)(nil),
 }
 
 func TestKnownTypeRegistry_AddKnownType(t *testing.T) {

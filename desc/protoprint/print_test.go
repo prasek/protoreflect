@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/desc/protoparse"
@@ -86,7 +86,7 @@ func checkFile(t *testing.T, pr *Printer, fd *desc.FileDescriptor, goldenFile st
 	b, err := ioutil.ReadFile(goldenFile)
 	testutil.Ok(t, err)
 
-	testutil.Eq(t, string(b), buf.String(), "wrong file contents for %s", goldenFile)
+	testutil.RequireDeepEqual(t, string(b), buf.String(), goldenFile)
 }
 
 func TestParseAndPrintPreservesAsMuchAsPossible(t *testing.T) {

@@ -24,11 +24,23 @@ if [[ "$(${PROTOC} --version 2>/dev/null)" != "libprotoc ${PROTOC_VERSION}" ]]; 
   cd ./protoc && unzip protoc.zip && cd ..
 fi
 
+PROTODIR=github.com/gogo/protobuf/types
+PKGMAP=Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor
+PKGMAP=${PKGMAP},Mgoogle/protobuf/any.proto=${PROTODIR}
+PKGMAP=${PKGMAP},Mgoogle/protobuf/api.proto=${PROTODIR}
+PKGMAP=${PKGMAP},Mgoogle/protobuf/duration.proto=${PROTODIR}
+PKGMAP=${PKGMAP},Mgoogle/protobuf/empty.proto=${PROTODIR}
+PKGMAP=${PKGMAP},Mgoogle/protobuf/field_mask.proto=${PROTODIR}
+PKGMAP=${PKGMAP},Mgoogle/protobuf/struct.proto=${PROTODIR}
+PKGMAP=${PKGMAP},Mgoogle/protobuf/timestamp.proto=${PROTODIR}
+PKGMAP=${PKGMAP},Mgoogle/protobuf/wrappers.proto=${PROTODIR}
+
 # Output directory will effectively be GOPATH/src.
 outdir="../../../../.."
-${PROTOC} "--go_out=plugins=grpc:$outdir" -I. *.proto
-${PROTOC} "--go_out=plugins=grpc:$outdir" -I. nopkg/*.proto
-${PROTOC} "--go_out=plugins=grpc:$outdir" -I. pkg/*.proto
+${PROTOC} "--gogo_out=plugins=grpc,${PKGMAP}:$outdir" -I. *.proto
+${PROTOC} "--gogo_out=plugins=grpc,${PKGMAP}:$outdir" -I. nopkg/*.proto
+${PROTOC} "--gogo_out=plugins=grpc,${PKGMAP}:$outdir" -I. pkg/*.proto
+
 
 # And make descriptor set (with source info) for several files
 ${PROTOC} --descriptor_set_out=./desc_test1.protoset --include_source_info --include_imports -I. desc_test1.proto

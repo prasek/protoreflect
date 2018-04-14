@@ -3,11 +3,12 @@
 // messages may be dynamic messages.
 package grpcdynamic
 
+/*
 import (
 	"fmt"
 	"io"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -288,3 +289,4 @@ func (s *BidiStream) RecvMsg() (proto.Message, error) {
 		return resp, nil
 	}
 }
+*/

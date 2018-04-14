@@ -8,15 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/protoc-gen-go/descriptor"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/any"
-	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/golang/protobuf/ptypes/struct"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/internal/testprotos"
@@ -92,16 +87,16 @@ func TestJSONAnyResolver(t *testing.T) {
 	dm := NewMessage(md)
 	dm.SetFieldByNumber(1, "fubar")
 	dm.SetFieldByNumber(2, int32(123))
-	a1, err := ptypes.MarshalAny(dm)
+	a1, err := types.MarshalAny(dm)
 	testutil.Ok(t, err)
 	md = fd2.FindMessage("snafu.MyMessage")
 	dm = NewMessage(md)
 	dm.SetFieldByNumber(1, "snafu")
 	dm.SetFieldByNumber(2, int32(456))
-	a2, err := ptypes.MarshalAny(dm)
+	a2, err := types.MarshalAny(dm)
 	testutil.Ok(t, err)
 
-	msg := &testprotos.TestWellKnownTypes{Extras: []*any.Any{a1, a2}}
+	msg := &testprotos.TestWellKnownTypes{Extras: []*types.Any{a1, a2}}
 	resolver := AnyResolver(nil, fd1, fd2)
 
 	jsm := jsonpb.Marshaler{AnyResolver: resolver}
@@ -128,15 +123,15 @@ func TestJSONAnyResolver_AutomaticForDynamicMessage(t *testing.T) {
 	dm := NewMessageFactoryWithDefaults().NewMessage(md).(*Message)
 	dm.SetFieldByNumber(1, "fubar")
 	dm.SetFieldByNumber(2, int32(123))
-	a1, err := ptypes.MarshalAny(dm)
+	a1, err := types.MarshalAny(dm)
 	testutil.Ok(t, err)
 	dm.SetFieldByNumber(1, "snafu")
 	dm.SetFieldByNumber(2, int32(456))
-	a2, err := ptypes.MarshalAny(dm)
+	a2, err := types.MarshalAny(dm)
 	testutil.Ok(t, err)
 	dm.SetFieldByNumber(1, "xyz")
 	dm.SetFieldByNumber(2, int32(-987))
-	dm.SetFieldByNumber(3, []*any.Any{a1, a2})
+	dm.SetFieldByNumber(3, []*types.Any{a1, a2})
 
 	js, err := dm.MarshalJSON()
 	testutil.Ok(t, err)
@@ -226,16 +221,16 @@ func TestMarshalJSONIndentEmbedWellKnownTypes(t *testing.T) {
 	testutil.Ok(t, err)
 	dm := NewMessage(md)
 
-	ts, err := ptypes.TimestampProto(time.Date(2010, 3, 4, 5, 6, 7, 809000, time.UTC))
+	ts, err := types.TimestampProto(time.Date(2010, 3, 4, 5, 6, 7, 809000, time.UTC))
 	testutil.Ok(t, err)
 	dm.SetFieldByNumber(1, ts)
 
-	anys := make([]*any.Any, 3)
-	anys[0], err = ptypes.MarshalAny(&testprotos.TestRequest{Bar: "foo"})
+	anys := make([]*types.Any, 3)
+	anys[0], err = types.MarshalAny(&testprotos.TestRequest{Bar: "foo"})
 	testutil.Ok(t, err)
-	anys[1], err = ptypes.MarshalAny(&testprotos.TestRequest{Bar: "bar"})
+	anys[1], err = types.MarshalAny(&testprotos.TestRequest{Bar: "bar"})
 	testutil.Ok(t, err)
-	anys[2], err = ptypes.MarshalAny(&testprotos.TestRequest{Bar: "baz"})
+	anys[2], err = types.MarshalAny(&testprotos.TestRequest{Bar: "baz"})
 	dm.SetFieldByNumber(13, anys)
 
 	js, err := dm.MarshalJSON()
@@ -298,41 +293,41 @@ func TestUnmarshalJSONAllowUnknownFields(t *testing.T) {
 }
 
 func TestJSONWellKnownType(t *testing.T) {
-	any1, err := ptypes.MarshalAny(&testprotos.TestRequest{
+	any1, err := types.MarshalAny(&testprotos.TestRequest{
 		Foo: []testprotos.Proto3Enum{testprotos.Proto3Enum_VALUE1, testprotos.Proto3Enum_VALUE2},
 		Bar: "bar",
 		Baz: &testprotos.TestMessage{Ne: []testprotos.TestMessage_NestedEnum{testprotos.TestMessage_VALUE1}},
 	})
 	testutil.Ok(t, err)
-	any2, err := ptypes.MarshalAny(ptypes.TimestampNow())
+	any2, err := types.MarshalAny(types.TimestampNow())
 	testutil.Ok(t, err)
 
 	wkts := &testprotos.TestWellKnownTypes{
-		StartTime: &timestamp.Timestamp{Seconds: 1010101, Nanos: 20202},
-		Elapsed:   &duration.Duration{Seconds: 30303, Nanos: 40404},
-		Dbl:       &wrappers.DoubleValue{Value: 3.14159},
-		Flt:       &wrappers.FloatValue{Value: -1.0101010},
-		Bl:        &wrappers.BoolValue{Value: true},
-		I32:       &wrappers.Int32Value{Value: -42},
-		I64:       &wrappers.Int64Value{Value: -9090909090},
-		U32:       &wrappers.UInt32Value{Value: 42},
-		U64:       &wrappers.UInt64Value{Value: 9090909090},
-		Str:       &wrappers.StringValue{Value: "foobar"},
-		Byt:       &wrappers.BytesValue{Value: []byte("snafu")},
-		Json: []*structpb.Value{
-			{Kind: &structpb.Value_BoolValue{BoolValue: true}},
-			{Kind: &structpb.Value_ListValue{ListValue: &structpb.ListValue{Values: []*structpb.Value{
-				{Kind: &structpb.Value_NullValue{}},
-				{Kind: &structpb.Value_StringValue{StringValue: "fubar"}},
-				{Kind: &structpb.Value_NumberValue{NumberValue: 10101.20202}},
+		StartTime: &types.Timestamp{Seconds: 1010101, Nanos: 20202},
+		Elapsed:   &types.Duration{Seconds: 30303, Nanos: 40404},
+		Dbl:       &types.DoubleValue{Value: 3.14159},
+		Flt:       &types.FloatValue{Value: -1.0101010},
+		Bl:        &types.BoolValue{Value: true},
+		I32:       &types.Int32Value{Value: -42},
+		I64:       &types.Int64Value{Value: -9090909090},
+		U32:       &types.UInt32Value{Value: 42},
+		U64:       &types.UInt64Value{Value: 9090909090},
+		Str:       &types.StringValue{Value: "foobar"},
+		Byt:       &types.BytesValue{Value: []byte("snafu")},
+		Json: []*types.Value{
+			{Kind: &types.Value_BoolValue{BoolValue: true}},
+			{Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: []*types.Value{
+				{Kind: &types.Value_NullValue{}},
+				{Kind: &types.Value_StringValue{StringValue: "fubar"}},
+				{Kind: &types.Value_NumberValue{NumberValue: 10101.20202}},
 			}}}},
-			{Kind: &structpb.Value_StructValue{StructValue: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"foo": {Kind: &structpb.Value_NullValue{}},
-				"bar": {Kind: &structpb.Value_StringValue{StringValue: "snafu"}},
-				"baz": {Kind: &structpb.Value_NumberValue{NumberValue: 30303.40404}},
+			{Kind: &types.Value_StructValue{StructValue: &types.Struct{Fields: map[string]*types.Value{
+				"foo": {Kind: &types.Value_NullValue{}},
+				"bar": {Kind: &types.Value_StringValue{StringValue: "snafu"}},
+				"baz": {Kind: &types.Value_NumberValue{NumberValue: 30303.40404}},
 			}}}},
 		},
-		Extras: []*any.Any{any1, any2},
+		Extras: []*types.Any{any1, any2},
 	}
 
 	jsm := jsonpb.Marshaler{}
@@ -347,47 +342,47 @@ func TestJSONWellKnownType(t *testing.T) {
 
 	// check that the unmarshalled fields were constructed correctly with the
 	// right value and type (e.g. generated well-known-type, not dynamic message)
-	ts, ok := dm.GetFieldByNumber(1).(*timestamp.Timestamp)
+	ts, ok := dm.GetFieldByNumber(1).(*types.Timestamp)
 	testutil.Require(t, ok)
 	testutil.Ceq(t, wkts.StartTime, ts, eqpm)
 
-	dur, ok := dm.GetFieldByNumber(2).(*duration.Duration)
+	dur, ok := dm.GetFieldByNumber(2).(*types.Duration)
 	testutil.Require(t, ok)
 	testutil.Ceq(t, wkts.Elapsed, dur, eqpm)
 
-	dbl, ok := dm.GetFieldByNumber(3).(*wrappers.DoubleValue)
+	dbl, ok := dm.GetFieldByNumber(3).(*types.DoubleValue)
 	testutil.Require(t, ok)
 	testutil.Eq(t, wkts.Dbl.Value, dbl.Value)
 
-	flt, ok := dm.GetFieldByNumber(4).(*wrappers.FloatValue)
+	flt, ok := dm.GetFieldByNumber(4).(*types.FloatValue)
 	testutil.Require(t, ok)
 	testutil.Eq(t, wkts.Flt.Value, flt.Value)
 
-	bl, ok := dm.GetFieldByNumber(5).(*wrappers.BoolValue)
+	bl, ok := dm.GetFieldByNumber(5).(*types.BoolValue)
 	testutil.Require(t, ok)
 	testutil.Eq(t, wkts.Bl.Value, bl.Value)
 
-	i32, ok := dm.GetFieldByNumber(6).(*wrappers.Int32Value)
+	i32, ok := dm.GetFieldByNumber(6).(*types.Int32Value)
 	testutil.Require(t, ok)
 	testutil.Eq(t, wkts.I32.Value, i32.Value)
 
-	i64, ok := dm.GetFieldByNumber(7).(*wrappers.Int64Value)
+	i64, ok := dm.GetFieldByNumber(7).(*types.Int64Value)
 	testutil.Require(t, ok)
 	testutil.Eq(t, wkts.I64.Value, i64.Value)
 
-	u32, ok := dm.GetFieldByNumber(8).(*wrappers.UInt32Value)
+	u32, ok := dm.GetFieldByNumber(8).(*types.UInt32Value)
 	testutil.Require(t, ok)
 	testutil.Eq(t, wkts.U32.Value, u32.Value)
 
-	u64, ok := dm.GetFieldByNumber(9).(*wrappers.UInt64Value)
+	u64, ok := dm.GetFieldByNumber(9).(*types.UInt64Value)
 	testutil.Require(t, ok)
 	testutil.Eq(t, wkts.U64.Value, u64.Value)
 
-	str, ok := dm.GetFieldByNumber(10).(*wrappers.StringValue)
+	str, ok := dm.GetFieldByNumber(10).(*types.StringValue)
 	testutil.Require(t, ok)
 	testutil.Eq(t, wkts.Str.Value, str.Value)
 
-	byt, ok := dm.GetFieldByNumber(11).(*wrappers.BytesValue)
+	byt, ok := dm.GetFieldByNumber(11).(*types.BytesValue)
 	testutil.Require(t, ok)
 	testutil.Eq(t, wkts.Byt.Value, byt.Value)
 
@@ -395,7 +390,7 @@ func TestJSONWellKnownType(t *testing.T) {
 	testutil.Require(t, ok)
 	testutil.Eq(t, len(wkts.Json), len(vals))
 	for i := range vals {
-		v, ok := vals[i].(*structpb.Value)
+		v, ok := vals[i].(*types.Value)
 		testutil.Require(t, ok)
 		testutil.Ceq(t, wkts.Json[i], v, eqpm)
 	}
@@ -404,7 +399,7 @@ func TestJSONWellKnownType(t *testing.T) {
 	testutil.Require(t, ok)
 	testutil.Eq(t, len(wkts.Extras), len(extras))
 	for i := range extras {
-		v, ok := extras[i].(*any.Any)
+		v, ok := extras[i].(*types.Any)
 		testutil.Require(t, ok)
 		testutil.Eq(t, wkts.Extras[i].TypeUrl, v.TypeUrl)
 		testutil.Eq(t, wkts.Extras[i].Value, v.Value)
@@ -424,7 +419,7 @@ func TestJSONWellKnownTypeFromFileDescriptorSet(t *testing.T) {
 	md := fd.FindMessage("google.protobuf.Duration")
 	testutil.Neq(t, nil, md)
 
-	dur := &duration.Duration{Seconds: 30303, Nanos: 40404}
+	dur := &types.Duration{Seconds: 30303, Nanos: 40404}
 
 	// marshal duration to JSON
 	jsm := jsonpb.Marshaler{}

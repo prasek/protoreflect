@@ -10,7 +10,7 @@ import (
 	"io"
 	"math"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 // ErrOverflow is returned when an integer is too large to be represented.

@@ -1,0 +1,5 @@
+=== RUN   TestLoadServiceDescriptors
+GotServiceInfo: testprotos.TestService: desc_test_proto3.proto
+--- PASS: TestLoadServiceDescriptors (0.00s)
+PASS
+ok  	github.com/jhump/protoreflect/grpcreflect	1.019s

@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 
 	"github.com/jhump/protoreflect/desc"
 )
@@ -1874,7 +1874,7 @@ func (m *Message) mergeFrom(pm proto.Message) error {
 	// more than just the step above...)
 	if hasUnknownExtensions {
 		// TODO: this is very inefficient. this could be much cleaner if the proto library
-		// provided access to unknown extensions (https://github.com/golang/protobuf/issues/385)
+		// provided access to unknown extensions (https://github.com/gogo/protobuf/issues/385)
 
 		// We are going to make a copy of the message and then clear out all known fields.
 		// When done, we can marshal the copy to bytes, and it will only have unrecognized

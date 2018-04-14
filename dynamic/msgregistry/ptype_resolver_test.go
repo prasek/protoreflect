@@ -12,10 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"golang.org/x/net/context"
-	"google.golang.org/genproto/protobuf/ptype"
-	"google.golang.org/genproto/protobuf/source_context"
 
 	"github.com/jhump/protoreflect/internal/testutil"
 )
@@ -31,13 +30,13 @@ func TestCachingTypeFetcher(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		pm, err := uncached("blah.blah.blah/fee.fi.fo.Fum", false)
 		testutil.Ok(t, err)
-		typ := pm.(*ptype.Type)
+		typ := pm.(*types.Type)
 		testutil.Eq(t, "fee.fi.fo.Fum", typ.Name)
 	}
 	for i := 0; i < 10; i++ {
 		pm, err := uncached("blah.blah.blah/fee.fi.fo.Foo", true)
 		testutil.Ok(t, err)
-		en := pm.(*ptype.Enum)
+		en := pm.(*types.Enum)
 		testutil.Eq(t, "fee.fi.fo.Foo", en.Name)
 	}
 
@@ -51,14 +50,14 @@ func TestCachingTypeFetcher(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		pm, err := cached("blah.blah.blah/fee.fi.fo.Fum", false)
 		testutil.Ok(t, err)
-		typ := pm.(*ptype.Type)
+		typ := pm.(*types.Type)
 		testutil.Eq(t, "fee.fi.fo.Fum", typ.Name)
 	}
 
 	for i := 0; i < 10; i++ {
 		pm, err := cached("blah.blah.blah/fee.fi.fo.Foo", true)
 		testutil.Ok(t, err)
-		en := pm.(*ptype.Enum)
+		en := pm.(*types.Enum)
 		testutil.Eq(t, "fee.fi.fo.Foo", en.Name)
 	}
 
@@ -71,12 +70,12 @@ func TestCachingTypeFetcher_MismatchType(t *testing.T) {
 	// get a message type
 	pm, err := fetcher("blah.blah.blah/fee.fi.fo.Fum", false)
 	testutil.Ok(t, err)
-	typ := pm.(*ptype.Type)
+	typ := pm.(*types.Type)
 	testutil.Eq(t, "fee.fi.fo.Fum", typ.Name)
 	// and an enum type
 	pm, err = fetcher("blah.blah.blah/fee.fi.fo.Foo", true)
 	testutil.Ok(t, err)
-	en := pm.(*ptype.Enum)
+	en := pm.(*types.Enum)
 	testutil.Eq(t, "fee.fi.fo.Foo", en.Name)
 
 	// now ask for same URL, but swapped types
@@ -110,13 +109,13 @@ func TestCachingTypeFetcher_Concurrency(t *testing.T) {
 				// message
 				pm, err := tf("blah.blah.blah/"+n, false)
 				testutil.Ok(t, err)
-				typ := pm.(*ptype.Type)
+				typ := pm.(*types.Type)
 				testutil.Eq(t, n, typ.Name)
 				atomic.AddInt32(&queryCount, 1)
 				// enum
 				pm, err = tf("blah.blah.blah.en/"+n, true)
 				testutil.Ok(t, err)
-				en := pm.(*ptype.Enum)
+				en := pm.(*types.Enum)
 				testutil.Eq(t, n, en.Name)
 				atomic.AddInt32(&queryCount, 1)
 			}
@@ -142,7 +141,7 @@ func TestHttpTypeFetcher(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		pm, err := fetcher("blah.blah.blah/fee.fi.fo.Message", false)
 		testutil.Ok(t, err)
-		typ := pm.(*ptype.Type)
+		typ := pm.(*types.Type)
 		testutil.Eq(t, "fee.fi.fo.Message", typ.Name)
 	}
 
@@ -150,7 +149,7 @@ func TestHttpTypeFetcher(t *testing.T) {
 		// name must have Enum for test fetcher to return an enum type
 		pm, err := fetcher("blah.blah.blah/fee.fi.fo.Enum", true)
 		testutil.Ok(t, err)
-		en := pm.(*ptype.Enum)
+		en := pm.(*types.Enum)
 		testutil.Eq(t, "fee.fi.fo.Enum", en.Name)
 	}
 
@@ -174,7 +173,7 @@ func TestHttpTypeFetcher_ParallelDownloads(t *testing.T) {
 			name := fmt.Sprintf("fee.fi.fo.Fum%d", index)
 			pm, err := fetcher("blah.blah.blah/"+name, false)
 			testutil.Ok(t, err)
-			typ := pm.(*ptype.Type)
+			typ := pm.(*types.Type)
 			testutil.Eq(t, name, typ.Name)
 		}()
 	}
@@ -259,29 +258,29 @@ func testFetcher(url string, enum bool) (proto.Message, error) {
 	if strings.Contains(name, "Error") {
 		return nil, errors.New(name)
 	} else if enum {
-		return &ptype.Enum{
+		return &types.Enum{
 			Name:          name,
-			SourceContext: &source_context.SourceContext{FileName: "test.proto"},
-			Syntax:        ptype.Syntax_SYNTAX_PROTO3,
-			Enumvalue: []*ptype.EnumValue{
+			SourceContext: &types.SourceContext{FileName: "test.proto"},
+			Syntax:        types.SYNTAX_PROTO3,
+			Enumvalue: []*types.EnumValue{
 				{Name: "A", Number: 0},
 				{Name: "B", Number: 1},
 				{Name: "C", Number: 2},
 			},
 		}, nil
 	} else {
-		return &ptype.Type{
+		return &types.Type{
 			Name:          name,
-			SourceContext: &source_context.SourceContext{FileName: "test.proto"},
-			Syntax:        ptype.Syntax_SYNTAX_PROTO3,
-			Fields: []*ptype.Field{
-				{Name: "a", Number: 1, Cardinality: ptype.Field_CARDINALITY_OPTIONAL, Kind: ptype.Field_TYPE_INT64},
-				{Name: "b", Number: 2, Cardinality: ptype.Field_CARDINALITY_OPTIONAL, Kind: ptype.Field_TYPE_STRING},
-				{Name: "c1", Number: 3, OneofIndex: 1, Cardinality: ptype.Field_CARDINALITY_OPTIONAL, Kind: ptype.Field_TYPE_STRING},
-				{Name: "c2", Number: 4, OneofIndex: 1, Cardinality: ptype.Field_CARDINALITY_OPTIONAL, Kind: ptype.Field_TYPE_BOOL},
-				{Name: "c3", Number: 5, OneofIndex: 1, Cardinality: ptype.Field_CARDINALITY_OPTIONAL, Kind: ptype.Field_TYPE_DOUBLE},
-				{Name: "d", Number: 6, Cardinality: ptype.Field_CARDINALITY_REPEATED, Kind: ptype.Field_TYPE_MESSAGE, TypeUrl: "type.googleapis.com/foo.bar.Baz"},
-				{Name: "e", Number: 7, Cardinality: ptype.Field_CARDINALITY_OPTIONAL, Kind: ptype.Field_TYPE_ENUM, TypeUrl: "type.googleapis.com/foo.bar.Blah"},
+			SourceContext: &types.SourceContext{FileName: "test.proto"},
+			Syntax:        types.SYNTAX_PROTO3,
+			Fields: []*types.Field{
+				{Name: "a", Number: 1, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_INT64},
+				{Name: "b", Number: 2, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_STRING},
+				{Name: "c1", Number: 3, OneofIndex: 1, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_STRING},
+				{Name: "c2", Number: 4, OneofIndex: 1, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_BOOL},
+				{Name: "c3", Number: 5, OneofIndex: 1, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_DOUBLE},
+				{Name: "d", Number: 6, Cardinality: types.CARDINALITY_REPEATED, Kind: types.TYPE_MESSAGE, TypeUrl: "type.googleapis.com/foo.bar.Baz"},
+				{Name: "e", Number: 7, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_ENUM, TypeUrl: "type.googleapis.com/foo.bar.Blah"},
 			},
 			Oneofs: []string{"union"},
 		}, nil

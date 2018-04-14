@@ -4,7 +4,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
 const (

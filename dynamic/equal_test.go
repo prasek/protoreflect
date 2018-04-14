@@ -1,7 +1,7 @@
 package dynamic
 
 import (
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 func eqm(a, b interface{}) bool {

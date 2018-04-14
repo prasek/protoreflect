@@ -7,7 +7,7 @@ import (
 )
 
 import (
-	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
 type FieldType struct {

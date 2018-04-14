@@ -8,11 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
-	"github.com/golang/protobuf/ptypes/any"
-	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/gogo/protobuf/proto"
+	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/jhump/protoreflect/desc"
 	_ "github.com/jhump/protoreflect/internal/testprotos"
@@ -20,7 +18,7 @@ import (
 )
 
 func TestSimpleDescriptorsFromScratch(t *testing.T) {
-	md, err := desc.LoadMessageDescriptorForMessage((*empty.Empty)(nil))
+	md, err := desc.LoadMessageDescriptorForMessage((*types.Empty)(nil))
 	testutil.Ok(t, err)
 
 	file := NewFile("foo/bar.proto").SetPackageName("foo.bar")
@@ -68,7 +66,7 @@ func TestSimpleDescriptorsFromScratch(t *testing.T) {
 }
 
 func TestSimpleDescriptorsFromScratch_SyntheticFiles(t *testing.T) {
-	md, err := desc.LoadMessageDescriptorForMessage((*empty.Empty)(nil))
+	md, err := desc.LoadMessageDescriptorForMessage((*types.Empty)(nil))
 	testutil.Ok(t, err)
 
 	en := NewEnum("Options")
@@ -118,11 +116,11 @@ func TestSimpleDescriptorsFromScratch_SyntheticFiles(t *testing.T) {
 }
 
 func TestComplexDescriptorsFromScratch(t *testing.T) {
-	mdEmpty, err := desc.LoadMessageDescriptorForMessage((*empty.Empty)(nil))
+	mdEmpty, err := desc.LoadMessageDescriptorForMessage((*types.Empty)(nil))
 	testutil.Ok(t, err)
-	mdAny, err := desc.LoadMessageDescriptorForMessage((*any.Any)(nil))
+	mdAny, err := desc.LoadMessageDescriptorForMessage((*types.Any)(nil))
 	testutil.Ok(t, err)
-	mdTimestamp, err := desc.LoadMessageDescriptorForMessage((*timestamp.Timestamp)(nil))
+	mdTimestamp, err := desc.LoadMessageDescriptorForMessage((*types.Timestamp)(nil))
 	testutil.Ok(t, err)
 
 	msgA := NewMessage("FooA").

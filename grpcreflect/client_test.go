@@ -1,5 +1,8 @@
 package grpcreflect
 
+/*
+// grpc reflection is hardcoded to use golang/protobuf
+
 import (
 	"fmt"
 	"net"
@@ -8,13 +11,10 @@ import (
 	"sync/atomic"
 	"testing"
 
-	_ "github.com/golang/protobuf/protoc-gen-go/plugin"
-	_ "github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
-	_ "google.golang.org/genproto/protobuf/api"
-	_ "google.golang.org/genproto/protobuf/field_mask"
-	_ "google.golang.org/genproto/protobuf/ptype"
-	_ "google.golang.org/genproto/protobuf/source_context"
+
+	_ "github.com/gogo/protobuf/protoc-gen-gogo/plugin"
+	_ "github.com/gogo/protobuf/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
@@ -239,3 +239,4 @@ func TestRecover(t *testing.T) {
 	testutil.Ok(t, err)
 	testutil.Eq(t, true, client.stream != nil && client.stream != stream)
 }
+*/
