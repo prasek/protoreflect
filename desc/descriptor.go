@@ -1680,7 +1680,6 @@ func toFileDescriptorLocked(fd *dpb.FileDescriptorProto) (*FileDescriptor, error
 	deps := make([]*FileDescriptor, len(fd.GetDependency()))
 	for i, dep := range fd.GetDependency() {
 		var err error
-		//fmt.Printf("Loading dependency: %v\n", dep)
 		deps[i], err = loadFileDescriptorLocked(dep)
 		if err != nil {
 			return nil, err

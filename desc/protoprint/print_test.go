@@ -86,7 +86,8 @@ func checkFile(t *testing.T, pr *Printer, fd *desc.FileDescriptor, goldenFile st
 	b, err := ioutil.ReadFile(goldenFile)
 	testutil.Ok(t, err)
 
-	testutil.RequireDeepEqual(t, string(b), buf.String(), goldenFile)
+	testutil.Eq(t, string(b), buf.String(), "wrong file contents for %s", goldenFile)
+	//testutil.RequireDeepEqual(t, string(b), buf.String(), goldenFile)
 }
 
 func TestParseAndPrintPreservesAsMuchAsPossible(t *testing.T) {

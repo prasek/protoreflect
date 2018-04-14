@@ -1,7 +1,5 @@
 package: github.com/jhump/protoreflect
 import:
-- package: github.com/fatih/color
-  version: v1.6.0
 - package: github.com/gogo/protobuf
   version: 1ef32a8b9fc3f8ec940126907cedb5998f6318e4
   subpackages:
@@ -10,10 +8,6 @@ import:
   - protoc-gen-gogo/descriptor
   - protoc-gen-gogo/plugin
   - types
-- package: github.com/sergi/go-diff
-  version: v1.0.0
-  subpackages:
-  - diffmatchpatch
 - package: golang.org/x/net
   subpackages:
   - context

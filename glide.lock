@@ -1,8 +1,6 @@
-hash: d2d5af49bbfb13cd4abe582f7f7a2ea77b9c44dc17bb506f4d1b00a2c50a2a80
-updated: 2018-04-14T05:56:58.410989314-07:00
+hash: dace1c5b50dbcb2eef03730846f2e9398a6cd62a2e51d6e34253fae467596088
+updated: 2018-04-14T06:24:57.660682125-07:00
 imports:
-- name: github.com/fatih/color
-  version: 507f6050b8568533fb3f5504de8e5205fa62a114
 - name: github.com/gogo/protobuf
   version: 1ef32a8b9fc3f8ec940126907cedb5998f6318e4
   subpackages:
@@ -20,14 +18,6 @@ imports:
   - ptypes/any
   - ptypes/duration
   - ptypes/timestamp
-- name: github.com/mattn/go-colorable
-  version: 9cbef7c35391cca05f15f8181dc0b18bc9736dbb
-- name: github.com/mattn/go-isatty
-  version: 56b76bdf51f7708750eac80fa38b952bb9f32639
-- name: github.com/sergi/go-diff
-  version: 1744e2970ca51c86172c8190fadad617561ed6e7
-  subpackages:
-  - diffmatchpatch
 - name: golang.org/x/net
   version: 5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec
   subpackages:
@@ -38,10 +28,6 @@ imports:
   - internal/timeseries
   - lex/httplex
   - trace
-- name: golang.org/x/sys
-  version: f6cff0780e542efa0c8e864dc8fa522808f6a598
-  subpackages:
-  - unix
 - name: golang.org/x/text
   version: e19ae1496984b1c655b8044a65c0300a3c878dd3
   subpackages:
