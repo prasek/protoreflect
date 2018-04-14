@@ -30,7 +30,7 @@ fi
 
 declare -A TESTS_FAILED
 
-TESTFLAGS="-v -race"
+TESTFLAGS="-v -race -cover -coverprofile=profile.out -covermode=atomic"
 
 echo
 
@@ -46,21 +46,24 @@ done
 
 echo
 
-DIR_ID=0
-for dir in $TESTDIRS; do
-    DIR_ID=$(expr $DIR_ID + 1)
+echo "mode: atomic" > coverage.out
 
+for dir in $TESTDIRS; do
     echo '+ go test' $TESTFLAGS "./${dir#./}"
     go test -i "${REPO}/${dir#./}" >& /dev/null # install dependencies, don't execute
     go test ${TESTFLAGS} "${REPO}/${dir#./}" >& test.log
 
     if [ $? != 0 ]; then
-        TESTS_FAILED["${dir}"]="${DIR_ID}"
+        TESTS_FAILED["${dir}"]="go test failed"
         echo "${RED}Tests failed: $dir${TEXTRESET}"
         cat test.log
         echo
     fi
     rm test.log
+
+    if [ -f profile.out ]; then
+      tail -n +2 profile.out >> coverage.out; rm profile.out
+    fi
 done
 
 for FAILED in "${!TESTS_FAILED[@]}"

@@ -1,3 +1,4 @@
 internal/testprotos/protoc
 vendor
 test.log
+coverage.out
