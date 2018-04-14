@@ -15,7 +15,8 @@ import (
 // These are standard protos included with protoc, but older versions of their
 // respective packages registered them using incorrect paths.
 var StdFileAliases = map[string]string{
-	// File mappings for gogo/protobuf v1.0.0 nuances
+	// File mappings for gogo/protobuf:
+	// version: 1ef32a8b9fc3f8ec940126907cedb5998f6318e4
 	// as populated by proto.RegisterFile() from the pb.go files
 	// in gogo/protobuf packages: types, descriptor, and plugin.
 
@@ -23,17 +24,22 @@ var StdFileAliases = map[string]string{
 	"google/protobuf/compiler/plugin.proto": "plugin.proto",
 
 	/*
-		//the types pb.go files are working fine for gogo v1.0.0
-		"google/protobuf/any.proto":             "any.proto",
-		"google/protobuf/api.proto":             "api.proto",
-		"google/protobuf/duration.proto":        "duration.proto",
-		"google/protobuf/empty.proto":           "empty.proto",
-		"google/protobuf/empty.proto":           "field_mask.proto",
-		"google/protobuf/struct.proto":          "source_context.proto",
-		"google/protobuf/struct.proto":          "struct.proto",
-		"google/protobuf/timestamp.proto":       "timestamp.proto",
-		"google/protobuf/wrappers.proto":        "type.proto",
-		"google/protobuf/wrappers.proto":        "wrappers.proto",
+			// These mappings are not needed for gogo/protobuf
+		  // version: 1ef32a8b9fc3f8ec940126907cedb5998f6318e4
+			// which is a little after v1.0.0 which didn't name these
+			// correctly in the pb.go proto.RegisterFile() but it's
+			// been fixed with the commit above.
+
+			"google/protobuf/any.proto":             "any.proto",
+			"google/protobuf/api.proto":             "api.proto",
+			"google/protobuf/duration.proto":        "duration.proto",
+			"google/protobuf/empty.proto":           "empty.proto",
+			"google/protobuf/empty.proto":           "field_mask.proto",
+			"google/protobuf/struct.proto":          "source_context.proto",
+			"google/protobuf/struct.proto":          "struct.proto",
+			"google/protobuf/timestamp.proto":       "timestamp.proto",
+			"google/protobuf/wrappers.proto":        "type.proto",
+			"google/protobuf/wrappers.proto":        "wrappers.proto",
 	*/
 }
 
