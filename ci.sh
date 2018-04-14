@@ -32,16 +32,19 @@ declare -A TESTS_FAILED
 
 TESTFLAGS="-v -race"
 
+echo
+
 for dir in $VETDIRS; do
-    echo '+ skipping go vet' "./${dir#./}"
-    #go vet "${REPO}/${dir#./}"
+    echo '+ go vet' "./${dir#./}"
+    go vet "${REPO}/${dir#./}"
     if [ $? != 0 ]; then
         TESTS_FAILED["${dir}"]="go vet failed"
-        echo
         echo "${RED}go vet failed: $dir${TEXTRESET}"
+        echo
     fi
-
 done
+
+echo
 
 DIR_ID=0
 for dir in $TESTDIRS; do
@@ -52,15 +55,13 @@ for dir in $TESTDIRS; do
     go test ${TESTFLAGS} "${REPO}/${dir#./}" >& test.log
 
     if [ $? != 0 ]; then
-        cat test.log
         TESTS_FAILED["${dir}"]="${DIR_ID}"
-        echo
         echo "${RED}Tests failed: $dir${TEXTRESET}"
-        continue
+        cat test.log
+        echo
     fi
+    rm test.log
 done
-
-echo
 
 for FAILED in "${!TESTS_FAILED[@]}"
 do
