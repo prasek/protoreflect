@@ -17,9 +17,9 @@ gover="$(go version | awk '{ print $3 }')"
 # The second term removes "devel" prefix, so if the two
 # strings are equal, it does not have that prefix, and
 # thus this is not a devel version.
+echo
+echo '+ gofmt -s -l ./'
 if [[ ${gover} == ${gover#devel*} ]]; then
-  echo
-  echo '+ gofmt -s -l ./'
   fmtdiff="$(gofmt -s -l ./)"
   if [[ -n "$fmtdiff" ]]; then
     gofmt -s -l ./ >&2
@@ -35,18 +35,18 @@ find_dirs() {
     find . -not \( \
          \( \
          -path './.git/*' \
-         -o -path './vendor/*' \
+         ${2:+-o -path "$2"} \
          \) \
          -prune \
          \) -name "$1" -print0 | xargs -0n1 dirname | sort -u
 }
 
-if [ -z "$TESTDIRS" ]; then
-    TESTDIRS=$(find_dirs '*_test.go')
+if [ -z "$VETDIRS" ]; then
+    VETDIRS=$(find_dirs '*.go' './internal/testprotos/*')
 fi
 
-if [ -z "$VETDIRS" ]; then
-    VETDIRS=$(find_dirs '*.go')
+if [ -z "$TESTDIRS" ]; then
+    TESTDIRS=$(find_dirs '*_test.go')
 fi
 
 declare -A TESTS_FAILED

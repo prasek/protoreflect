@@ -24,6 +24,10 @@ if [[ "$(${PROTOC} --version 2>/dev/null)" != "libprotoc ${PROTOC_VERSION}" ]]; 
   cd ./protoc && unzip protoc.zip && cd ..
 fi
 
+cd ${GOPATH}/src/github.com/gogo/protobuf/protoc-gen-gogo
+go install
+cd -
+
 PROTODIR=github.com/gogo/protobuf/types
 PKGMAP=Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 PKGMAP=${PKGMAP},Mgoogle/protobuf/any.proto=${PROTODIR}
