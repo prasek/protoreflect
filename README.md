@@ -3,7 +3,15 @@
 [![codecov](https://codecov.io/gh/prasek/protoreflect/branch/master/graph/badge.svg)](https://codecov.io/gh/prasek/protoreflect)
 ----
 ## Forked to work with gogo/protobuf
----
+
+Sample glide.yaml
+```yaml
+ - package: github.com/jhump/protoreflect
+   vcs: git
+   repo: https://github.com/prasek/protoreflect.git
+   version: v0.1.0
+```
+----
 
 This repo provides reflection APIs for protocol buffers (also known as "protobufs" for short)
 and GRPC. The core of reflection in protobufs is the
