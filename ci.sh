@@ -7,6 +7,27 @@ TEXTRESET=$'\033[0m' # reset the foreground colour
 
 REPO=github.com/jhump/protoreflect
 
+gover="$(go version | awk '{ print $3 }')"
+
+# We don't run gofmt for devel versions because it
+# changed circa 11/2017. So code that passes the gofmt
+# check for other versions will fail for devel version.
+# For now, just skip the check for devel versions.
+
+# The second term removes "devel" prefix, so if the two
+# strings are equal, it does not have that prefix, and
+# thus this is not a devel version.
+if [[ ${gover} == ${gover#devel*} ]]; then
+  echo
+  echo '+ gofmt -s -l ./'
+  fmtdiff="$(gofmt -s -l ./)"
+  if [[ -n "$fmtdiff" ]]; then
+    gofmt -s -l ./ >&2
+    echo "Run gofmt on the above files!" >&2
+    exit 1
+  fi
+fi
+
 # This helper function walks the current directory looking for directories
 # holding certain files ($1 parameter), and prints their paths on standard
 # output, one per line.
