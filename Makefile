@@ -85,5 +85,3 @@ testcover:
 			tail -n +2 profile.out >> coverage.out && rm profile.out ; \
 		fi \
 	done
-
->>>>>>> ci
