@@ -74,20 +74,6 @@ func (ed *EnumDescriptor) GetFile() *FileDescriptor {
 	return ed.file
 }
 
-/*
-func (ed *EnumDescriptor) GetEnumOptions() *dpb.EnumOptions {
-	return ed.proto.GetOptions()
-}
-
-func (ed *EnumDescriptor) GetSourceInfo() *dpb.SourceCodeInfo_Location {
-	return ed.sourceInfo
-}
-
-func (ed *EnumDescriptor) AsEnumDescriptorProto() *dpb.EnumDescriptorProto {
-	return ed.proto
-}
-*/
-
 func (ed *EnumDescriptor) String() string {
 	return ed.proto.String()
 }

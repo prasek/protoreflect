@@ -46,18 +46,6 @@ func (vd *EnumValueDescriptor) GetFile() *FileDescriptor {
 	return vd.file
 }
 
-func (vd *EnumValueDescriptor) GetEnumValueOptions() *dpb.EnumValueOptions {
-	return vd.proto.GetOptions()
-}
-
-func (vd *EnumValueDescriptor) GetSourceInfo() *dpb.SourceCodeInfo_Location {
-	return vd.sourceInfo
-}
-
-func (vd *EnumValueDescriptor) AsEnumValueDescriptorProto() *dpb.EnumValueDescriptorProto {
-	return vd.proto
-}
-
 func (vd *EnumValueDescriptor) String() string {
 	return vd.proto.String()
 }

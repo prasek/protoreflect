@@ -87,7 +87,7 @@ func (fd *FieldDescriptor) determineDefault() interface{} {
 		}
 	}
 
-	switch fd.GetType() {
+	switch fd.getType() {
 	case dpb.FieldDescriptorProto_TYPE_FIXED32,
 		dpb.FieldDescriptorProto_TYPE_UINT32:
 		return uint32(0)
@@ -123,12 +123,12 @@ func (fd *FieldDescriptor) determineDefault() interface{} {
 			return int32(0) // WTF?
 		}
 	default:
-		panic(fmt.Sprintf("Unknown field type: %v", fd.GetType()))
+		panic(fmt.Sprintf("Unknown field type: %v", fd.getType()))
 	}
 }
 
 func parseDefaultValue(fd *FieldDescriptor, val string) interface{} {
-	switch fd.GetType() {
+	switch fd.getType() {
 	case dpb.FieldDescriptorProto_TYPE_ENUM:
 		vd := fd.GetEnumType().FindValueByName(val)
 		if vd != nil {
@@ -262,14 +262,8 @@ func (fd *FieldDescriptor) GetOneOf() *OneOfDescriptor {
 // GetType returns the type of this field. If the type indicates an enum, the
 // enum type can be queried via GetEnumType. If the type indicates a message, the
 // message type can be queried via GetMessageType.
-func (fd *FieldDescriptor) GetType() dpb.FieldDescriptorProto_Type {
+func (fd *FieldDescriptor) getType() dpb.FieldDescriptorProto_Type {
 	return fd.proto.GetType()
-}
-
-// GetLabel returns the label for this field. The label can be required (proto2-only),
-// optional (default for proto3), or required.
-func (fd *FieldDescriptor) GetLabel() dpb.FieldDescriptorProto_Label {
-	return fd.proto.GetLabel()
 }
 
 // IsRequired returns true if this field has the "required" label.

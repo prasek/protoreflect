@@ -35,6 +35,17 @@ type testService struct {
 	testprotos.TestServiceServer
 }
 
+func TestMethodExtension(t *testing.T) {
+	/*
+	   func (gio *GrpcInterceptorOptions) IsTx(info *grpc.UnaryServerInfo) bool {
+	   	method := gio.methods[info.FullMethod]
+	   	tx := proto.GetBoolExtension(method.GetMethodOptions(), stub.E_Tx, false)
+	   	return tx
+	   }
+	*/
+
+}
+
 func TestLoadServiceDescriptors(t *testing.T) {
 	s := grpc.NewServer()
 	testprotos.RegisterTestServiceServer(s, testService{})
