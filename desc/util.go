@@ -1,7 +1,7 @@
-package internal
+package desc
 
 import (
-	"unicode"
+	"strconv"
 	"unicode/utf8"
 
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
@@ -79,42 +79,17 @@ const (
 	UninterpretedName_nameTag  = 1
 )
 
-func JsonName(name string) string {
-	var js []rune
-	nextUpper := false
-	for i, r := range name {
-		if r == '_' {
-			nextUpper = true
-			continue
-		}
-		if i == 0 {
-			js = append(js, r)
-		} else if nextUpper {
-			nextUpper = false
-			js = append(js, unicode.ToUpper(r))
-		} else {
-			js = append(js, r)
-		}
-	}
-	return string(js)
-}
+type sourceInfoMap map[string]*dpb.SourceCodeInfo_Location
 
-func InitCap(name string) string {
-	r, sz := utf8.DecodeRuneInString(name)
-	return string(unicode.ToUpper(r)) + name[sz:]
-}
-
-type SourceInfoMap map[string]*dpb.SourceCodeInfo_Location
-
-func (m SourceInfoMap) Get(path []int32) *dpb.SourceCodeInfo_Location {
+func (m sourceInfoMap) Get(path []int32) *dpb.SourceCodeInfo_Location {
 	return m[asMapKey(path)]
 }
 
-func (m SourceInfoMap) Put(path []int32, loc *dpb.SourceCodeInfo_Location) {
+func (m sourceInfoMap) Put(path []int32, loc *dpb.SourceCodeInfo_Location) {
 	m[asMapKey(path)] = loc
 }
 
-func (m SourceInfoMap) PutIfAbsent(path []int32, loc *dpb.SourceCodeInfo_Location) bool {
+func (m sourceInfoMap) PutIfAbsent(path []int32, loc *dpb.SourceCodeInfo_Location) bool {
 	k := asMapKey(path)
 	if _, ok := m[k]; ok {
 		return false
@@ -143,22 +118,22 @@ func asMapKey(slice []int32) string {
 	return string(b)
 }
 
-func CreateSourceInfoMap(fd *dpb.FileDescriptorProto) SourceInfoMap {
-	res := SourceInfoMap{}
+func createsourceInfoMap(fd *dpb.FileDescriptorProto) sourceInfoMap {
+	res := sourceInfoMap{}
 	for _, l := range fd.GetSourceCodeInfo().GetLocation() {
 		res.Put(l.Path, l)
 	}
 	return res
 }
 
-// CreatePrefixList returns a list of package prefixes to search when resolving
+// createPrefixList returns a list of package prefixes to search when resolving
 // a symbol name. If the given package is blank, it returns only the empty
 // string. If the given package contains only one token, e.g. "foo", it returns
 // that token and the empty string, e.g. ["foo", ""]. Otherwise, it returns
 // successively shorter prefixes of the package and then the empty string. For
 // example, for a package named "foo.bar.baz" it will return the following list:
 //   ["foo.bar.baz", "foo.bar", "foo", ""]
-func CreatePrefixList(pkg string) []string {
+func createPrefixList(pkg string) []string {
 	if pkg == "" {
 		return []string{""}
 	}
@@ -185,4 +160,133 @@ func CreatePrefixList(pkg string) []string {
 	prefixes[0] = pkg
 
 	return prefixes
+}
+
+func unescape(s string) string {
+	// protoc encodes default values for 'bytes' fields using C escaping,
+	// so this function reverses that escaping
+	out := make([]byte, 0, len(s))
+	var buf [4]byte
+	for len(s) > 0 {
+		if s[0] != '\\' || len(s) < 2 {
+			// not escape sequence, or too short to be well-formed escape
+			out = append(out, s[0])
+			s = s[1:]
+		} else if s[1] == 'x' || s[1] == 'X' {
+			n := matchPrefix(s[2:], 2, isHex)
+			if n == 0 {
+				// bad escape
+				out = append(out, s[:2]...)
+				s = s[2:]
+			} else {
+				c, err := strconv.ParseUint(s[2:2+n], 16, 8)
+				if err != nil {
+					// shouldn't really happen...
+					out = append(out, s[:2+n]...)
+				} else {
+					out = append(out, byte(c))
+				}
+				s = s[2+n:]
+			}
+		} else if s[1] >= '0' && s[1] <= '7' {
+			n := 1 + matchPrefix(s[2:], 2, isOctal)
+			c, err := strconv.ParseUint(s[1:1+n], 8, 8)
+			if err != nil || c > 0xff {
+				out = append(out, s[:1+n]...)
+			} else {
+				out = append(out, byte(c))
+			}
+			s = s[1+n:]
+		} else if s[1] == 'u' {
+			if len(s) < 6 {
+				// bad escape
+				out = append(out, s...)
+				s = s[len(s):]
+			} else {
+				c, err := strconv.ParseUint(s[2:6], 16, 16)
+				if err != nil {
+					// bad escape
+					out = append(out, s[:6]...)
+				} else {
+					w := utf8.EncodeRune(buf[:], rune(c))
+					out = append(out, buf[:w]...)
+				}
+				s = s[6:]
+			}
+		} else if s[1] == 'U' {
+			if len(s) < 10 {
+				// bad escape
+				out = append(out, s...)
+				s = s[len(s):]
+			} else {
+				c, err := strconv.ParseUint(s[2:10], 16, 32)
+				if err != nil || c > 0x10ffff {
+					// bad escape
+					out = append(out, s[:10]...)
+				} else {
+					w := utf8.EncodeRune(buf[:], rune(c))
+					out = append(out, buf[:w]...)
+				}
+				s = s[10:]
+			}
+		} else {
+			switch s[1] {
+			case 'a':
+				out = append(out, '\a')
+			case 'b':
+				out = append(out, '\b')
+			case 'f':
+				out = append(out, '\f')
+			case 'n':
+				out = append(out, '\n')
+			case 'r':
+				out = append(out, '\r')
+			case 't':
+				out = append(out, '\t')
+			case 'v':
+				out = append(out, '\v')
+			case '\\':
+				out = append(out, '\\')
+			case '\'':
+				out = append(out, '\'')
+			case '"':
+				out = append(out, '"')
+			case '?':
+				out = append(out, '?')
+			default:
+				// invalid escape, just copy it as-is
+				out = append(out, s[:2]...)
+			}
+			s = s[2:]
+		}
+	}
+	return string(out)
+}
+
+func isOctal(b byte) bool { return b >= '0' && b <= '7' }
+
+func isHex(b byte) bool {
+	return (b >= '0' && b <= '9') || (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F')
+}
+
+func matchPrefix(s string, limit int, fn func(byte) bool) int {
+	l := len(s)
+	if l > limit {
+		l = limit
+	}
+	i := 0
+	for ; i < l; i++ {
+		if !fn(s[i]) {
+			return i
+		}
+	}
+	return i
+}
+
+func merge(a, b string) string {
+	if a == "" {
+		return b
+	} else {
+		return a + "." + b
+	}
 }

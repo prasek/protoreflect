@@ -1,4 +1,4 @@
-package grpcreflect
+package desc
 
 import (
 	"testing"
