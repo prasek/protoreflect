@@ -1,9 +1,9 @@
 # TODO: run golint, errcheck, staticcheck, unused, ineffassign
 .PHONY: default
-default: deps checkgofmt vet predeclared test
+default: deps checkgofmt vet predeclared unused ineffassign predeclared errchack test
 
 .PHONY: ci
-ci: deps checkgofmt vet predeclared testcover
+ci: deps checkgofmt vet predeclared unused ineffassign predeclared errchack testcover
 
 .PHONY: deps
 deps:
