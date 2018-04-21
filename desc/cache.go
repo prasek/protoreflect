@@ -59,7 +59,7 @@ func toFileDescriptorLocked(fd *dpb.FileDescriptorProto) (*FileDescriptor, error
 			return nil, err
 		}
 	}
-	return CreateFileDescriptor(fd, deps...)
+	return createFileDescriptor(fd, deps...)
 }
 
 func getFileFromCache(file string) *FileDescriptor {

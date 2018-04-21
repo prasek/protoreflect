@@ -7,6 +7,8 @@ import (
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
+var _ Descriptor = (*ServiceDescriptor)(nil)
+
 // ServiceDescriptor describes an RPC service declared in a proto file.
 type ServiceDescriptor struct {
 	proto      *dpb.ServiceDescriptorProto

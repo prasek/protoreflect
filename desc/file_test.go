@@ -718,7 +718,7 @@ func TestFileDescriptorDeps(t *testing.T) {
 }
 
 func createDesc(t *testing.T, fd *dpb.FileDescriptorProto, deps ...*FileDescriptor) *FileDescriptor {
-	desc, err := CreateFileDescriptor(fd, deps...)
+	desc, err := createFileDescriptor(fd, deps...)
 	testutil.Ok(t, err)
 	return desc
 }
@@ -746,5 +746,5 @@ func loadProtoset(path string) (*FileDescriptor, error) {
 	if err = proto.Unmarshal(bb, &fds); err != nil {
 		return nil, err
 	}
-	return CreateFileDescriptorFromSet(&fds)
+	return createFileDescriptorFromSet(&fds)
 }

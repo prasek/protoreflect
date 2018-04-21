@@ -57,3 +57,18 @@ func LoadServiceDescriptor(svc *grpc.ServiceDesc) (*ServiceDescriptor, error) {
 	}
 	return sd, nil
 }
+
+func LoadMethodDescriptors(svr *grpc.Server) (map[string]*MethodDescriptor, error) {
+	methods := make(map[string]*MethodDescriptor)
+	sds, err := LoadServiceDescriptors(svr)
+	if err != nil {
+		return nil, err
+	}
+	for _, sd := range sds {
+		for _, method := range sd.GetMethods() {
+			methodName := fmt.Sprintf("/%s/%s", sd.GetFullyQualifiedName(), method.GetName())
+			methods[methodName] = method
+		}
+	}
+	return methods, nil
+}

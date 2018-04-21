@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/gogo/protobuf/proto"
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
+
+var _ Descriptor = (*FieldDescriptor)(nil)
 
 // FieldDescriptor describes a field of a protocol buffer message.
 type FieldDescriptor struct {
@@ -213,20 +214,12 @@ func (fd *FieldDescriptor) GetFile() *FileDescriptor {
 	return fd.file
 }
 
-func (fd *FieldDescriptor) GetOptions() proto.Message {
-	return fd.proto.GetOptions()
-}
-
 func (fd *FieldDescriptor) GetFieldOptions() *dpb.FieldOptions {
 	return fd.proto.GetOptions()
 }
 
 func (fd *FieldDescriptor) GetSourceInfo() *dpb.SourceCodeInfo_Location {
 	return fd.sourceInfo
-}
-
-func (fd *FieldDescriptor) AsProto() proto.Message {
-	return fd.proto
 }
 
 func (fd *FieldDescriptor) AsFieldDescriptorProto() *dpb.FieldDescriptorProto {

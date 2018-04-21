@@ -1,13 +1,12 @@
 package desc
 
 import (
-	"bytes"
 	"fmt"
-	"sort"
 
-	"github.com/gogo/protobuf/proto"
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
+
+var _ Descriptor = (*MessageDescriptor)(nil)
 
 // MessageDescriptor describes a protocol buffer message.
 type MessageDescriptor struct {
@@ -19,7 +18,7 @@ type MessageDescriptor struct {
 	enums      []*EnumDescriptor
 	extensions []*FieldDescriptor
 	oneOfs     []*OneOfDescriptor
-	extRanges  extRanges
+	//extRanges  extRanges
 	fqn        string
 	sourceInfo *dpb.SourceCodeInfo_Location
 	isProto3   bool
@@ -54,15 +53,17 @@ func createMessageDescriptor(fd *FileDescriptor, parent Descriptor, enclosing st
 		symbols[n] = od
 		ret.oneOfs = append(ret.oneOfs, od)
 	}
-	for _, r := range md.GetExtensionRange() {
-		// proto.ExtensionRange is inclusive (and that's how extension ranges are defined in code).
-		// but protoc converts range to exclusive end in descriptor, so we must convert back
-		end := r.GetEnd() - 1
-		ret.extRanges = append(ret.extRanges, proto.ExtensionRange{
-			Start: r.GetStart(),
-			End:   end})
-	}
-	sort.Sort(ret.extRanges)
+	/*
+		for _, r := range md.GetExtensionRange() {
+			// proto.ExtensionRange is inclusive (and that's how extension ranges are defined in code).
+			// but protoc converts range to exclusive end in descriptor, so we must convert back
+			end := r.GetEnd() - 1
+			ret.extRanges = append(ret.extRanges, proto.ExtensionRange{
+				Start: r.GetStart(),
+				End:   end})
+		}
+		sort.Sort(ret.extRanges)
+	*/
 	ret.isProto3 = fd.isProto3
 	ret.isMapEntry = md.GetOptions().GetMapEntry() &&
 		len(ret.fields) == 2 &&
@@ -120,25 +121,21 @@ func (md *MessageDescriptor) GetFile() *FileDescriptor {
 	return md.file
 }
 
-func (md *MessageDescriptor) GetOptions() proto.Message {
-	return md.proto.GetOptions()
-}
-
+/*
 func (md *MessageDescriptor) GetMessageOptions() *dpb.MessageOptions {
 	return md.proto.GetOptions()
 }
+*/
 
 func (md *MessageDescriptor) GetSourceInfo() *dpb.SourceCodeInfo_Location {
 	return md.sourceInfo
 }
 
-func (md *MessageDescriptor) AsProto() proto.Message {
-	return md.proto
-}
-
+/*
 func (md *MessageDescriptor) AsDescriptorProto() *dpb.DescriptorProto {
 	return md.proto
 }
+*/
 
 func (md *MessageDescriptor) String() string {
 	return md.proto.String()
@@ -180,6 +177,7 @@ func (md *MessageDescriptor) IsProto3() bool {
 	return md.isProto3
 }
 
+/*
 // GetExtensionRanges returns the ranges of extension field numbers for this message.
 func (md *MessageDescriptor) GetExtensionRanges() []proto.ExtensionRange {
 	return md.extRanges
@@ -228,6 +226,7 @@ func (er extRanges) Less(i, j int) bool {
 func (er extRanges) Swap(i, j int) {
 	er[i], er[j] = er[j], er[i]
 }
+*/
 
 // FindFieldByName finds the field with the given name. If no such field exists
 // then nil is returned. Only regular fields are returned, not extensions.

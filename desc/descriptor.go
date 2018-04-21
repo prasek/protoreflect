@@ -1,10 +1,5 @@
 package desc
 
-import (
-	"github.com/gogo/protobuf/proto"
-	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
-)
-
 // Descriptor is the common interface implemented by all descriptor objects.
 type Descriptor interface {
 	// GetName returns the name of the object described by the descriptor. This will
@@ -24,15 +19,17 @@ type Descriptor interface {
 	// GetFile returns the file descriptor in which this element was declared. File
 	// descriptors return themselves.
 	GetFile() *FileDescriptor
-	// GetOptions returns the options proto containing options for the described element.
-	GetOptions() proto.Message
-	// GetSourceInfo returns any source code information that was present in the file
-	// descriptor. Source code info is optional. If no source code info is available for
-	// the element (including if there is none at all in the file descriptor) then this
-	// returns nil
-	GetSourceInfo() *dpb.SourceCodeInfo_Location
-	// AsProto returns the underlying descriptor proto for this descriptor.
-	AsProto() proto.Message
+
+	/*
+			// GetOptions returns the options proto containing options for the described element.
+			GetOptions() proto.Message
+
+		// GetSourceInfo returns any source code information that was present in the file
+		// descriptor. Source code info is optional. If no source code info is available for
+		// the element (including if there is none at all in the file descriptor) then this
+		// returns nil
+		GetSourceInfo() *dpb.SourceCodeInfo_Location
+	*/
 }
 
 // scope represents a lexical scope in a proto file in which messages and enums

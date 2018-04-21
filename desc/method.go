@@ -1,9 +1,10 @@
 package desc
 
 import (
-	"github.com/gogo/protobuf/proto"
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
+
+var _ Descriptor = (*MethodDescriptor)(nil)
 
 // MethodDescriptor describes an RPC method declared in a proto file.
 type MethodDescriptor struct {
@@ -58,20 +59,12 @@ func (md *MethodDescriptor) GetFile() *FileDescriptor {
 	return md.file
 }
 
-func (md *MethodDescriptor) GetOptions() proto.Message {
-	return md.proto.GetOptions()
-}
-
 func (md *MethodDescriptor) GetMethodOptions() *dpb.MethodOptions {
 	return md.proto.GetOptions()
 }
 
 func (md *MethodDescriptor) GetSourceInfo() *dpb.SourceCodeInfo_Location {
 	return md.sourceInfo
-}
-
-func (md *MethodDescriptor) AsProto() proto.Message {
-	return md.proto
 }
 
 func (md *MethodDescriptor) AsMethodDescriptorProto() *dpb.MethodDescriptorProto {

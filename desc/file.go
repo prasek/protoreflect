@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gogo/protobuf/proto"
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
+
+var _ Descriptor = (*FileDescriptor)(nil)
 
 // FileDescriptor describes a proto source file.
 type FileDescriptor struct {
@@ -24,11 +25,11 @@ type FileDescriptor struct {
 	isProto3   bool
 }
 
-// CreateFileDescriptor instantiates a new file descriptor for the given descriptor proto.
+// createFileDescriptor instantiates a new file descriptor for the given descriptor proto.
 // The file's direct dependencies must be provided. If the given dependencies do not include
 // all of the file's dependencies or if the contents of the descriptors are internally
 // inconsistent (e.g. contain unresolvable symbols) then an error is returned.
-func CreateFileDescriptor(fd *dpb.FileDescriptorProto, deps ...*FileDescriptor) (*FileDescriptor, error) {
+func createFileDescriptor(fd *dpb.FileDescriptorProto, deps ...*FileDescriptor) (*FileDescriptor, error) {
 	ret := &FileDescriptor{proto: fd, symbols: map[string]Descriptor{}, fieldIndex: map[string]map[int32]*FieldDescriptor{}}
 	pkg := fd.GetPackage()
 
@@ -75,7 +76,7 @@ func CreateFileDescriptor(fd *dpb.FileDescriptorProto, deps ...*FileDescriptor) 
 		ret.symbols[n] = sd
 		ret.services = append(ret.services, sd)
 	}
-	sourceCodeInfo := createsourceInfoMap(fd)
+	sourceCodeInfo := createSourceInfoMap(fd)
 
 	// now we can resolve all type references and source code info
 	scopes := []scope{fileScope(ret)}
@@ -106,10 +107,10 @@ func CreateFileDescriptor(fd *dpb.FileDescriptorProto, deps ...*FileDescriptor) 
 	return ret, nil
 }
 
-// CreateFileDescriptors constructs a set of descriptors, one for each of the
+// createFileDescriptors constructs a set of descriptors, one for each of the
 // given descriptor protos. The given set of descriptor protos must include all
 // transitive dependencies for every file.
-func CreateFileDescriptors(fds []*dpb.FileDescriptorProto) (map[string]*FileDescriptor, error) {
+func createFileDescriptors(fds []*dpb.FileDescriptorProto) (map[string]*FileDescriptor, error) {
 	if len(fds) == 0 {
 		return nil, nil
 	}
@@ -129,17 +130,17 @@ func CreateFileDescriptors(fds []*dpb.FileDescriptorProto) (map[string]*FileDesc
 	return resolved, nil
 }
 
-// CreateFileDescriptorFromSet creates a descriptor from the given file descriptor set. The
+// createFileDescriptorFromSet creates a descriptor from the given file descriptor set. The
 // set's *last* file will be the returned descriptor. The set's remaining files must comprise
 // the full set of transitive dependencies of that last file. This is the same format and
 // order used by protoc when emitting a FileDescriptorSet file with an invocation like so:
 //    protoc --descriptor_set_out=./test.protoset --include_imports -I. test.proto
-func CreateFileDescriptorFromSet(fds *dpb.FileDescriptorSet) (*FileDescriptor, error) {
+func createFileDescriptorFromSet(fds *dpb.FileDescriptorSet) (*FileDescriptor, error) {
 	files := fds.GetFile()
 	if len(files) == 0 {
 		return nil, errors.New("file descriptor set is empty")
 	}
-	resolved, err := CreateFileDescriptors(files)
+	resolved, err := createFileDescriptors(files)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +173,7 @@ func createFromSet(filename string, seen []string, files map[string]*dpb.FileDes
 			deps[i] = dep
 		}
 	}
-	d, err := CreateFileDescriptor(fdp, deps...)
+	d, err := createFileDescriptor(fdp, deps...)
 	if err != nil {
 		return nil, err
 	}
@@ -209,20 +210,12 @@ func (fd *FileDescriptor) GetFile() *FileDescriptor {
 	return fd
 }
 
-func (fd *FileDescriptor) GetOptions() proto.Message {
-	return fd.proto.GetOptions()
-}
-
 func (fd *FileDescriptor) GetFileOptions() *dpb.FileOptions {
 	return fd.proto.GetOptions()
 }
 
 func (fd *FileDescriptor) GetSourceInfo() *dpb.SourceCodeInfo_Location {
 	return nil
-}
-
-func (fd *FileDescriptor) AsProto() proto.Message {
-	return fd.proto
 }
 
 func (fd *FileDescriptor) AsFileDescriptorProto() *dpb.FileDescriptorProto {

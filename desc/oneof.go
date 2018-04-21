@@ -5,6 +5,8 @@ import (
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
+var _ Descriptor = (*OneOfDescriptor)(nil)
+
 // OneOfDescriptor describes a one-of field set declared in a protocol buffer message.
 type OneOfDescriptor struct {
 	proto      *dpb.OneofDescriptorProto
