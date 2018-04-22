@@ -3,7 +3,8 @@ package desc
 import (
 	"fmt"
 
-	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	//dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
 type sourceInfoMap map[string]*dpb.SourceCodeInfo_Location

@@ -7,6 +7,7 @@ import (
 
 	gogo "github.com/gogo/protobuf/proto"
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	_ "github.com/gogo/protobuf/protoc-gen-gogo/plugin"
 )
 
 var _ Protoer = (*protoGoGo)(nil)

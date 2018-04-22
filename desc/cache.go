@@ -8,7 +8,8 @@ import (
 	"reflect"
 	"sync"
 
-	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	//dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/jhump/protoreflect/proto"
 )
 
@@ -298,6 +299,9 @@ func findEnum(fd *FileDescriptor, path []int) *EnumDescriptor {
 // versions of packages.
 func loadFileDescriptorProto(file string) (*dpb.FileDescriptorProto, error) {
 	fdb := proto.FileDescriptor(file)
+	if fdb == nil {
+		return nil, fmt.Errorf("Missing file descriptor %s", file)
+	}
 
 	fd, err := decodeFileDescriptorProto(file, fdb)
 	if err != nil {

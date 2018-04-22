@@ -6,7 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	//dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 )
 
 // createFileDescriptor instantiates a new file descriptor for the given descriptor proto.

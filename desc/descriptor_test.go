@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/gogo/protobuf/protoc-gen-gogo/plugin"
-
 	"github.com/jhump/protoreflect/internal/testutil"
 )
 
