@@ -5,8 +5,6 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/gogo/protobuf/proto"
-	google_protobuf1 "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/jhump/protoreflect/internal/testprotos"
 	"github.com/stretchr/testify/require"
 )
@@ -31,15 +29,6 @@ var _TestService_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Metadata: "desc_test_proto3.proto",
-}
-
-var E_Custom = &proto.ExtensionDesc{
-	ExtendedType:  (*google_protobuf1.MethodOptions)(nil),
-	ExtensionType: (*bool)(nil),
-	Field:         50059,
-	Name:          "testprotos.custom",
-	Tag:           "varint,50059,opt,name=custom",
-	Filename:      "desc_test_proto3.proto",
 }
 
 type testService struct {
@@ -68,11 +57,12 @@ func TestLoadServiceDescriptors(t *testing.T) {
 	cases := []struct {
 		method, request, response string
 		opt                       bool
+		custom2                   *testprotos.CustomOption
 	}{
-		{"DoSomething", "testprotos.TestRequest", "jhump.protoreflect.desc.Bar", true},
-		{"DoSomethingElse", "testprotos.TestMessage", "testprotos.TestResponse", false},
-		{"DoSomethingAgain", "jhump.protoreflect.desc.Bar", "testprotos.AnotherTestMessage", false},
-		{"DoSomethingForever", "testprotos.TestRequest", "testprotos.TestResponse", false},
+		{"DoSomething", "testprotos.TestRequest", "jhump.protoreflect.desc.Bar", true, &testprotos.CustomOption{Name: "test123", Value: 55}},
+		{"DoSomethingElse", "testprotos.TestMessage", "testprotos.TestResponse", false, nil},
+		{"DoSomethingAgain", "jhump.protoreflect.desc.Bar", "testprotos.AnotherTestMessage", false, nil},
+		{"DoSomethingForever", "testprotos.TestRequest", "testprotos.TestResponse", false, nil},
 	}
 
 	require.Equal(t, len(cases), len(sd.GetMethods()))
@@ -82,7 +72,17 @@ func TestLoadServiceDescriptors(t *testing.T) {
 		require.Equal(t, c.method, md.GetName())
 		require.Equal(t, c.request, md.GetInputType().GetFullyQualifiedName())
 		require.Equal(t, c.response, md.GetOutputType().GetFullyQualifiedName())
-		require.Equal(t, c.opt, md.GetBoolExtension(E_Custom.Field, false))
+		require.Equal(t, c.opt, md.GetBoolExtension(testprotos.E_Custom.Field, false))
+
+		v, err := md.GetExtension(testprotos.E_Custom2.Field)
+		if v != nil {
+			require.Nil(t, err)
+		}
+		if c.custom2 == nil {
+			require.Nil(t, c.custom2, v)
+		} else {
+			require.Equal(t, c.custom2, v)
+		}
 	}
 }
 

@@ -1,10 +1,5 @@
 package desc
 
-import (
-	"github.com/gogo/protobuf/proto"
-	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
-)
-
 var _ Descriptor = (*MethodDescriptor)(nil)
 
 func (md *MethodDescriptor) GetName() string {
@@ -52,43 +47,10 @@ func (md *MethodDescriptor) GetOutputType() *MessageDescriptor {
 	return md.outType
 }
 
-//fqn comes from grpc server info.FullMethod
 func (md *MethodDescriptor) GetBoolExtension(field int32, def bool) bool {
-	bpb, err := proto.Marshal(md.proto)
-	if err != nil {
-		return def
-	}
-	return getBoolExtension(bpb, field, def)
+	return GetBoolExtension(md.proto.Options, field, def)
 }
 
-/*
-func (md *MethodDescriptor) GetBoolExtension(field int32, def bool) bool {
-	m := proto.RegisteredExtensions(md.proto.Options)
-	if m == nil {
-		return def
-	}
-	ext, ok := m[field]
-	if !ok {
-		return def
-	}
-	return proto.GetBoolExtension(md.proto.GetOptions(), ext, def)
-}
-*/
-
-func getBoolExtension(protoMessage []byte, extField int32, def bool) bool {
-	mdp := &dpb.MethodDescriptorProto{}
-	err := proto.Unmarshal(protoMessage, mdp)
-	if err != nil {
-		return def
-	}
-
-	m := proto.RegisteredExtensions(mdp.Options)
-	if m == nil {
-		return def
-	}
-	ext, ok := m[extField]
-	if !ok {
-		return def
-	}
-	return proto.GetBoolExtension(mdp.GetOptions(), ext, def)
+func (md *MethodDescriptor) GetExtension(field int32) (interface{}, error) {
+	return GetExtension(md.proto.Options, field)
 }

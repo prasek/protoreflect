@@ -31,6 +31,14 @@ func (sd *ServiceDescriptor) GetMethods() []*MethodDescriptor {
 	return sd.methods
 }
 
+func (sd *ServiceDescriptor) GetBoolExtension(field int32, def bool) bool {
+	return GetBoolExtension(sd.proto.Options, field, def)
+}
+
+func (sd *ServiceDescriptor) GetExtension(field int32) (interface{}, error) {
+	return GetExtension(sd.proto.Options, field)
+}
+
 // FindMethodByName finds the method with the given name. If no such method exists
 // then nil is returned.
 func (sd *ServiceDescriptor) FindMethodByName(name string) *MethodDescriptor {

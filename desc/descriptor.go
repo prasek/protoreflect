@@ -23,14 +23,17 @@ type Descriptor interface {
 	GetFile() *FileDescriptor
 
 	/*
-			// GetOptions returns the options proto containing options for the described element.
-			GetOptions() proto.Message
+		// GetOptions returns the options proto containing options for the described element.
+		GetOptions() Message
 
-		// GetSourceInfo returns any source code information that was present in the file
-		// descriptor. Source code info is optional. If no source code info is available for
-		// the element (including if there is none at all in the file descriptor) then this
-		// returns nil
-		GetSourceInfo() *dpb.SourceCodeInfo_Location
+		// AsProto() returns the underlying proto
+		AsProto() Message
+
+			// GetSourceInfo returns any source code information that was present in the file
+			// descriptor. Source code info is optional. If no source code info is available for
+			// the element (including if there is none at all in the file descriptor) then this
+			// returns nil
+			GetSourceInfo() *dpb.SourceCodeInfo_Location
 	*/
 }
 

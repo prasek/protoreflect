@@ -42,6 +42,7 @@ It has these top-level messages:
 	ReallySimpleMessage
 	TestRequest
 	TestResponse
+	CustomOption
 	TestWellKnownTypes
 */
 package testprotos
