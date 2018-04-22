@@ -3,38 +3,9 @@ package desc
 import (
 	"fmt"
 	"sort"
-
-	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
 var _ Descriptor = (*EnumDescriptor)(nil)
-
-// EnumDescriptor describes an enum declared in a proto file.
-type EnumDescriptor struct {
-	proto       *dpb.EnumDescriptorProto
-	parent      Descriptor
-	file        *FileDescriptor
-	values      []*EnumValueDescriptor
-	valuesByNum sortedValues
-	fqn         string
-	sourceInfo  *dpb.SourceCodeInfo_Location
-}
-
-func createEnumDescriptor(fd *FileDescriptor, parent Descriptor, enclosing string, ed *dpb.EnumDescriptorProto, symbols map[string]Descriptor) (*EnumDescriptor, string) {
-	enumName := merge(enclosing, ed.GetName())
-	ret := &EnumDescriptor{proto: ed, parent: parent, file: fd, fqn: enumName}
-	for _, ev := range ed.GetValue() {
-		evd, n := createEnumValueDescriptor(fd, ret, enumName, ev)
-		symbols[n] = evd
-		ret.values = append(ret.values, evd)
-	}
-	if len(ret.values) > 0 {
-		ret.valuesByNum = make(sortedValues, len(ret.values))
-		copy(ret.valuesByNum, ret.values)
-		sort.Stable(ret.valuesByNum)
-	}
-	return ret, enumName
-}
 
 type sortedValues []*EnumValueDescriptor
 

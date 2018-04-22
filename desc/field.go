@@ -9,190 +9,6 @@ import (
 
 var _ Descriptor = (*FieldDescriptor)(nil)
 
-// FieldDescriptor describes a field of a protocol buffer message.
-type FieldDescriptor struct {
-	proto      *dpb.FieldDescriptorProto
-	parent     Descriptor
-	owner      *MessageDescriptor
-	file       *FileDescriptor
-	oneOf      *OneOfDescriptor
-	msgType    *MessageDescriptor
-	enumType   *EnumDescriptor
-	fqn        string
-	sourceInfo *dpb.SourceCodeInfo_Location
-	isMap      bool
-}
-
-func createFieldDescriptor(fd *FileDescriptor, parent Descriptor, enclosing string, fld *dpb.FieldDescriptorProto) (*FieldDescriptor, string) {
-	fldName := merge(enclosing, fld.GetName())
-	ret := &FieldDescriptor{proto: fld, parent: parent, file: fd, fqn: fldName}
-	if fld.GetExtendee() == "" {
-		ret.owner = parent.(*MessageDescriptor)
-	}
-	// owner for extensions, field type (be it message or enum), and one-ofs get resolved later
-	return ret, fldName
-}
-
-func (fd *FieldDescriptor) resolve(path []int32, sourceCodeInfo sourceInfoMap, scopes []scope) error {
-	if fd.proto.OneofIndex != nil && fd.oneOf == nil {
-		return fmt.Errorf("Could not link field %s to one-of index %d", fd.fqn, *fd.proto.OneofIndex)
-	}
-	fd.sourceInfo = sourceCodeInfo.Get(path)
-	if fd.proto.GetType() == dpb.FieldDescriptorProto_TYPE_ENUM {
-		if desc, err := resolve(fd.file, fd.proto.GetTypeName(), scopes); err != nil {
-			return err
-		} else {
-			fd.enumType = desc.(*EnumDescriptor)
-		}
-	}
-	if fd.proto.GetType() == dpb.FieldDescriptorProto_TYPE_MESSAGE || fd.proto.GetType() == dpb.FieldDescriptorProto_TYPE_GROUP {
-		if desc, err := resolve(fd.file, fd.proto.GetTypeName(), scopes); err != nil {
-			return err
-		} else {
-			fd.msgType = desc.(*MessageDescriptor)
-		}
-	}
-	if fd.proto.GetExtendee() != "" {
-		if desc, err := resolve(fd.file, fd.proto.GetExtendee(), scopes); err != nil {
-			return err
-		} else {
-			fd.owner = desc.(*MessageDescriptor)
-		}
-	}
-	fd.file.registerField(fd)
-	fd.isMap = fd.proto.GetLabel() == dpb.FieldDescriptorProto_LABEL_REPEATED &&
-		fd.proto.GetType() == dpb.FieldDescriptorProto_TYPE_MESSAGE &&
-		fd.GetMessageType().IsMapEntry()
-	return nil
-}
-
-func (fd *FieldDescriptor) determineDefault() interface{} {
-	if fd.IsMap() {
-		return map[interface{}]interface{}(nil)
-	} else if fd.IsRepeated() {
-		return []interface{}(nil)
-	} else if fd.msgType != nil {
-		return nil
-	}
-
-	proto3 := fd.file.isProto3
-	if !proto3 {
-		def := fd.AsFieldDescriptorProto().GetDefaultValue()
-		if def != "" {
-			ret := parseDefaultValue(fd, def)
-			if ret != nil {
-				return ret
-			}
-			// if we can't parse default value, fall-through to return normal default...
-		}
-	}
-
-	switch fd.getType() {
-	case dpb.FieldDescriptorProto_TYPE_FIXED32,
-		dpb.FieldDescriptorProto_TYPE_UINT32:
-		return uint32(0)
-	case dpb.FieldDescriptorProto_TYPE_SFIXED32,
-		dpb.FieldDescriptorProto_TYPE_INT32,
-		dpb.FieldDescriptorProto_TYPE_SINT32:
-		return int32(0)
-	case dpb.FieldDescriptorProto_TYPE_FIXED64,
-		dpb.FieldDescriptorProto_TYPE_UINT64:
-		return uint64(0)
-	case dpb.FieldDescriptorProto_TYPE_SFIXED64,
-		dpb.FieldDescriptorProto_TYPE_INT64,
-		dpb.FieldDescriptorProto_TYPE_SINT64:
-		return int64(0)
-	case dpb.FieldDescriptorProto_TYPE_FLOAT:
-		return float32(0.0)
-	case dpb.FieldDescriptorProto_TYPE_DOUBLE:
-		return float64(0.0)
-	case dpb.FieldDescriptorProto_TYPE_BOOL:
-		return false
-	case dpb.FieldDescriptorProto_TYPE_BYTES:
-		return []byte(nil)
-	case dpb.FieldDescriptorProto_TYPE_STRING:
-		return ""
-	case dpb.FieldDescriptorProto_TYPE_ENUM:
-		if proto3 {
-			return int32(0)
-		}
-		enumVals := fd.GetEnumType().GetValues()
-		if len(enumVals) > 0 {
-			return enumVals[0].GetNumber()
-		} else {
-			return int32(0) // WTF?
-		}
-	default:
-		panic(fmt.Sprintf("Unknown field type: %v", fd.getType()))
-	}
-}
-
-func parseDefaultValue(fd *FieldDescriptor, val string) interface{} {
-	switch fd.getType() {
-	case dpb.FieldDescriptorProto_TYPE_ENUM:
-		vd := fd.GetEnumType().FindValueByName(val)
-		if vd != nil {
-			return vd.GetNumber()
-		}
-		return nil
-	case dpb.FieldDescriptorProto_TYPE_BOOL:
-		if val == "true" {
-			return true
-		} else if val == "false" {
-			return false
-		}
-		return nil
-	case dpb.FieldDescriptorProto_TYPE_BYTES:
-		return []byte(unescape(val))
-	case dpb.FieldDescriptorProto_TYPE_STRING:
-		return val
-	case dpb.FieldDescriptorProto_TYPE_FLOAT:
-		if f, err := strconv.ParseFloat(val, 32); err == nil {
-			return float32(f)
-		} else {
-			return float32(0)
-		}
-	case dpb.FieldDescriptorProto_TYPE_DOUBLE:
-		if f, err := strconv.ParseFloat(val, 64); err == nil {
-			return f
-		} else {
-			return float64(0)
-		}
-	case dpb.FieldDescriptorProto_TYPE_INT32,
-		dpb.FieldDescriptorProto_TYPE_SINT32,
-		dpb.FieldDescriptorProto_TYPE_SFIXED32:
-		if i, err := strconv.ParseInt(val, 10, 32); err == nil {
-			return int32(i)
-		} else {
-			return int32(0)
-		}
-	case dpb.FieldDescriptorProto_TYPE_UINT32,
-		dpb.FieldDescriptorProto_TYPE_FIXED32:
-		if i, err := strconv.ParseUint(val, 10, 32); err == nil {
-			return uint32(i)
-		} else {
-			return uint32(0)
-		}
-	case dpb.FieldDescriptorProto_TYPE_INT64,
-		dpb.FieldDescriptorProto_TYPE_SINT64,
-		dpb.FieldDescriptorProto_TYPE_SFIXED64:
-		if i, err := strconv.ParseInt(val, 10, 64); err == nil {
-			return i
-		} else {
-			return int64(0)
-		}
-	case dpb.FieldDescriptorProto_TYPE_UINT64,
-		dpb.FieldDescriptorProto_TYPE_FIXED64:
-		if i, err := strconv.ParseUint(val, 10, 64); err == nil {
-			return i
-		} else {
-			return uint64(0)
-		}
-	default:
-		return nil
-	}
-}
-
 func (fd *FieldDescriptor) GetName() string {
 	return fd.proto.GetName()
 }
@@ -214,15 +30,7 @@ func (fd *FieldDescriptor) GetFile() *FileDescriptor {
 	return fd.file
 }
 
-func (fd *FieldDescriptor) GetFieldOptions() *dpb.FieldOptions {
-	return fd.proto.GetOptions()
-}
-
-func (fd *FieldDescriptor) GetSourceInfo() *dpb.SourceCodeInfo_Location {
-	return fd.sourceInfo
-}
-
-func (fd *FieldDescriptor) AsFieldDescriptorProto() *dpb.FieldDescriptorProto {
+func (fd *FieldDescriptor) asFieldDescriptorProto() *dpb.FieldDescriptorProto {
 	return fd.proto
 }
 
@@ -352,9 +160,132 @@ func (fd *FieldDescriptor) GetEnumType() *EnumDescriptor {
 //   | string        | string  |
 //   |-------------------------|
 func (fd *FieldDescriptor) GetDefaultValue() interface{} {
-	return fd.getDefaultValue()
+	return fd.determineDefault()
 }
 
-func (fd *FieldDescriptor) getDefaultValue() interface{} {
-	return fd.determineDefault()
+func (fd *FieldDescriptor) determineDefault() interface{} {
+	if fd.IsMap() {
+		return map[interface{}]interface{}(nil)
+	} else if fd.IsRepeated() {
+		return []interface{}(nil)
+	} else if fd.msgType != nil {
+		return nil
+	}
+
+	proto3 := fd.file.isProto3
+	if !proto3 {
+		def := fd.asFieldDescriptorProto().GetDefaultValue()
+		if def != "" {
+			ret := parseDefaultValue(fd, def)
+			if ret != nil {
+				return ret
+			}
+			// if we can't parse default value, fall-through to return normal default...
+		}
+	}
+
+	switch fd.getType() {
+	case dpb.FieldDescriptorProto_TYPE_FIXED32,
+		dpb.FieldDescriptorProto_TYPE_UINT32:
+		return uint32(0)
+	case dpb.FieldDescriptorProto_TYPE_SFIXED32,
+		dpb.FieldDescriptorProto_TYPE_INT32,
+		dpb.FieldDescriptorProto_TYPE_SINT32:
+		return int32(0)
+	case dpb.FieldDescriptorProto_TYPE_FIXED64,
+		dpb.FieldDescriptorProto_TYPE_UINT64:
+		return uint64(0)
+	case dpb.FieldDescriptorProto_TYPE_SFIXED64,
+		dpb.FieldDescriptorProto_TYPE_INT64,
+		dpb.FieldDescriptorProto_TYPE_SINT64:
+		return int64(0)
+	case dpb.FieldDescriptorProto_TYPE_FLOAT:
+		return float32(0.0)
+	case dpb.FieldDescriptorProto_TYPE_DOUBLE:
+		return float64(0.0)
+	case dpb.FieldDescriptorProto_TYPE_BOOL:
+		return false
+	case dpb.FieldDescriptorProto_TYPE_BYTES:
+		return []byte(nil)
+	case dpb.FieldDescriptorProto_TYPE_STRING:
+		return ""
+	case dpb.FieldDescriptorProto_TYPE_ENUM:
+		if proto3 {
+			return int32(0)
+		}
+		enumVals := fd.GetEnumType().GetValues()
+		if len(enumVals) > 0 {
+			return enumVals[0].GetNumber()
+		} else {
+			return int32(0) // WTF?
+		}
+	default:
+		panic(fmt.Sprintf("Unknown field type: %v", fd.getType()))
+	}
+}
+
+func parseDefaultValue(fd *FieldDescriptor, val string) interface{} {
+	switch fd.getType() {
+	case dpb.FieldDescriptorProto_TYPE_ENUM:
+		vd := fd.GetEnumType().FindValueByName(val)
+		if vd != nil {
+			return vd.GetNumber()
+		}
+		return nil
+	case dpb.FieldDescriptorProto_TYPE_BOOL:
+		if val == "true" {
+			return true
+		} else if val == "false" {
+			return false
+		}
+		return nil
+	case dpb.FieldDescriptorProto_TYPE_BYTES:
+		return []byte(unescape(val))
+	case dpb.FieldDescriptorProto_TYPE_STRING:
+		return val
+	case dpb.FieldDescriptorProto_TYPE_FLOAT:
+		if f, err := strconv.ParseFloat(val, 32); err == nil {
+			return float32(f)
+		} else {
+			return float32(0)
+		}
+	case dpb.FieldDescriptorProto_TYPE_DOUBLE:
+		if f, err := strconv.ParseFloat(val, 64); err == nil {
+			return f
+		} else {
+			return float64(0)
+		}
+	case dpb.FieldDescriptorProto_TYPE_INT32,
+		dpb.FieldDescriptorProto_TYPE_SINT32,
+		dpb.FieldDescriptorProto_TYPE_SFIXED32:
+		if i, err := strconv.ParseInt(val, 10, 32); err == nil {
+			return int32(i)
+		} else {
+			return int32(0)
+		}
+	case dpb.FieldDescriptorProto_TYPE_UINT32,
+		dpb.FieldDescriptorProto_TYPE_FIXED32:
+		if i, err := strconv.ParseUint(val, 10, 32); err == nil {
+			return uint32(i)
+		} else {
+			return uint32(0)
+		}
+	case dpb.FieldDescriptorProto_TYPE_INT64,
+		dpb.FieldDescriptorProto_TYPE_SINT64,
+		dpb.FieldDescriptorProto_TYPE_SFIXED64:
+		if i, err := strconv.ParseInt(val, 10, 64); err == nil {
+			return i
+		} else {
+			return int64(0)
+		}
+	case dpb.FieldDescriptorProto_TYPE_UINT64,
+		dpb.FieldDescriptorProto_TYPE_FIXED64:
+		if i, err := strconv.ParseUint(val, 10, 64); err == nil {
+			return i
+		} else {
+			return uint64(0)
+		}
+	default:
+		return nil
+	}
 }

@@ -5,6 +5,8 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/gogo/protobuf/proto"
+	google_protobuf1 "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/jhump/protoreflect/internal/testprotos"
 	"github.com/stretchr/testify/require"
 )
@@ -31,6 +33,15 @@ var _TestService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "desc_test_proto3.proto",
 }
 
+var E_Custom = &proto.ExtensionDesc{
+	ExtendedType:  (*google_protobuf1.MethodOptions)(nil),
+	ExtensionType: (*bool)(nil),
+	Field:         50059,
+	Name:          "testprotos.custom",
+	Tag:           "varint,50059,opt,name=custom",
+	Filename:      "desc_test_proto3.proto",
+}
+
 type testService struct {
 	testprotos.TestServiceServer
 }
@@ -54,11 +65,14 @@ func TestLoadServiceDescriptors(t *testing.T) {
 	require.Equal(t, 1, len(sds), "service descriptor len")
 	sd := sds["testprotos.TestService"]
 
-	cases := []struct{ method, request, response string }{
-		{"DoSomething", "testprotos.TestRequest", "jhump.protoreflect.desc.Bar"},
-		{"DoSomethingElse", "testprotos.TestMessage", "testprotos.TestResponse"},
-		{"DoSomethingAgain", "jhump.protoreflect.desc.Bar", "testprotos.AnotherTestMessage"},
-		{"DoSomethingForever", "testprotos.TestRequest", "testprotos.TestResponse"},
+	cases := []struct {
+		method, request, response string
+		opt                       bool
+	}{
+		{"DoSomething", "testprotos.TestRequest", "jhump.protoreflect.desc.Bar", true},
+		{"DoSomethingElse", "testprotos.TestMessage", "testprotos.TestResponse", false},
+		{"DoSomethingAgain", "jhump.protoreflect.desc.Bar", "testprotos.AnotherTestMessage", false},
+		{"DoSomethingForever", "testprotos.TestRequest", "testprotos.TestResponse", false},
 	}
 
 	require.Equal(t, len(cases), len(sd.GetMethods()))
@@ -68,6 +82,7 @@ func TestLoadServiceDescriptors(t *testing.T) {
 		require.Equal(t, c.method, md.GetName())
 		require.Equal(t, c.request, md.GetInputType().GetFullyQualifiedName())
 		require.Equal(t, c.response, md.GetOutputType().GetFullyQualifiedName())
+		require.Equal(t, c.opt, md.GetBoolExtension(E_Custom.Field, false))
 	}
 }
 

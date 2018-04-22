@@ -1,25 +1,5 @@
 package desc
 
-import dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
-
-// EnumValueDescriptor describes an allowed value of an enum declared in a proto file.
-type EnumValueDescriptor struct {
-	proto      *dpb.EnumValueDescriptorProto
-	parent     *EnumDescriptor
-	file       *FileDescriptor
-	fqn        string
-	sourceInfo *dpb.SourceCodeInfo_Location
-}
-
-func createEnumValueDescriptor(fd *FileDescriptor, parent *EnumDescriptor, enclosing string, evd *dpb.EnumValueDescriptorProto) (*EnumValueDescriptor, string) {
-	valName := merge(enclosing, evd.GetName())
-	return &EnumValueDescriptor{proto: evd, parent: parent, file: fd, fqn: valName}, valName
-}
-
-func (vd *EnumValueDescriptor) resolve(path []int32, sourceCodeInfo sourceInfoMap) {
-	vd.sourceInfo = sourceCodeInfo.Get(path)
-}
-
 func (vd *EnumValueDescriptor) GetName() string {
 	return vd.proto.GetName()
 }

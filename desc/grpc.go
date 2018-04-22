@@ -3,7 +3,6 @@ package desc
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
 	"google.golang.org/grpc"
 )
 
@@ -33,18 +32,12 @@ type InterceptorInfo struct {
 }
 
 type InterceptorInfoEntry struct {
-	sd *ServiceDescriptor
-	md *MethodDescriptor
+	Service *ServiceDescriptor
+	Method  *MethodDescriptor
 }
 
 func (info *InterceptorInfo) register(fqn string, sd *ServiceDescriptor, md *MethodDescriptor) {
-	info.methods[fqn] = &InterceptorInfoEntry{sd: sd, md: md}
-}
-
-//fqn comes from grpc server info.FullMethod
-func (info *InterceptorInfo) GetBoolExtension(fqn string, ext *proto.ExtensionDesc, def bool) bool {
-	entry := info.methods[fqn]
-	return proto.GetBoolExtension(entry.md.GetMethodOptions(), ext, false)
+	info.methods[fqn] = &InterceptorInfoEntry{Service: sd, Method: md}
 }
 
 // LoadServiceDescriptors loads the service descriptors for all services exposed by the

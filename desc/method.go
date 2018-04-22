@@ -1,42 +1,11 @@
 package desc
 
 import (
+	"github.com/gogo/protobuf/proto"
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
 var _ Descriptor = (*MethodDescriptor)(nil)
-
-// MethodDescriptor describes an RPC method declared in a proto file.
-type MethodDescriptor struct {
-	proto      *dpb.MethodDescriptorProto
-	parent     *ServiceDescriptor
-	file       *FileDescriptor
-	inType     *MessageDescriptor
-	outType    *MessageDescriptor
-	fqn        string
-	sourceInfo *dpb.SourceCodeInfo_Location
-}
-
-func createMethodDescriptor(fd *FileDescriptor, parent *ServiceDescriptor, enclosing string, md *dpb.MethodDescriptorProto) (*MethodDescriptor, string) {
-	// request and response types get resolved later
-	methodName := merge(enclosing, md.GetName())
-	return &MethodDescriptor{proto: md, parent: parent, file: fd, fqn: methodName}, methodName
-}
-
-func (md *MethodDescriptor) resolve(path []int32, sourceCodeInfo sourceInfoMap, scopes []scope) error {
-	md.sourceInfo = sourceCodeInfo.Get(path)
-	if desc, err := resolve(md.file, md.proto.GetInputType(), scopes); err != nil {
-		return err
-	} else {
-		md.inType = desc.(*MessageDescriptor)
-	}
-	if desc, err := resolve(md.file, md.proto.GetOutputType(), scopes); err != nil {
-		return err
-	} else {
-		md.outType = desc.(*MessageDescriptor)
-	}
-	return nil
-}
 
 func (md *MethodDescriptor) GetName() string {
 	return md.proto.GetName()
@@ -57,18 +26,6 @@ func (md *MethodDescriptor) GetService() *ServiceDescriptor {
 
 func (md *MethodDescriptor) GetFile() *FileDescriptor {
 	return md.file
-}
-
-func (md *MethodDescriptor) GetMethodOptions() *dpb.MethodOptions {
-	return md.proto.GetOptions()
-}
-
-func (md *MethodDescriptor) GetSourceInfo() *dpb.SourceCodeInfo_Location {
-	return md.sourceInfo
-}
-
-func (md *MethodDescriptor) AsMethodDescriptorProto() *dpb.MethodDescriptorProto {
-	return md.proto
 }
 
 func (md *MethodDescriptor) String() string {
@@ -93,4 +50,45 @@ func (md *MethodDescriptor) GetInputType() *MessageDescriptor {
 // GetOutputType returns the output type, or response type, of the RPC method.
 func (md *MethodDescriptor) GetOutputType() *MessageDescriptor {
 	return md.outType
+}
+
+//fqn comes from grpc server info.FullMethod
+func (md *MethodDescriptor) GetBoolExtension(field int32, def bool) bool {
+	bpb, err := proto.Marshal(md.proto)
+	if err != nil {
+		return def
+	}
+	return getBoolExtension(bpb, field, def)
+}
+
+/*
+func (md *MethodDescriptor) GetBoolExtension(field int32, def bool) bool {
+	m := proto.RegisteredExtensions(md.proto.Options)
+	if m == nil {
+		return def
+	}
+	ext, ok := m[field]
+	if !ok {
+		return def
+	}
+	return proto.GetBoolExtension(md.proto.GetOptions(), ext, def)
+}
+*/
+
+func getBoolExtension(protoMessage []byte, extField int32, def bool) bool {
+	mdp := &dpb.MethodDescriptorProto{}
+	err := proto.Unmarshal(protoMessage, mdp)
+	if err != nil {
+		return def
+	}
+
+	m := proto.RegisteredExtensions(mdp.Options)
+	if m == nil {
+		return def
+	}
+	ext, ok := m[extField]
+	if !ok {
+		return def
+	}
+	return proto.GetBoolExtension(mdp.GetOptions(), ext, def)
 }

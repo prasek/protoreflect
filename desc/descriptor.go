@@ -1,5 +1,7 @@
 package desc
 
+import dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+
 // Descriptor is the common interface implemented by all descriptor objects.
 type Descriptor interface {
 	// GetName returns the name of the object described by the descriptor. This will
@@ -35,3 +37,99 @@ type Descriptor interface {
 // scope represents a lexical scope in a proto file in which messages and enums
 // can be declared.
 type scope func(string) Descriptor
+
+// FileDescriptor describes a proto source file.
+type FileDescriptor struct {
+	proto      *dpb.FileDescriptorProto
+	symbols    map[string]Descriptor
+	deps       []*FileDescriptor
+	publicDeps []*FileDescriptor
+	weakDeps   []*FileDescriptor
+	messages   []*MessageDescriptor
+	enums      []*EnumDescriptor
+	extensions []*FieldDescriptor
+	services   []*ServiceDescriptor
+	fieldIndex map[string]map[int32]*FieldDescriptor
+	isProto3   bool
+}
+
+// ServiceDescriptor describes an RPC service declared in a proto file.
+type ServiceDescriptor struct {
+	proto      *dpb.ServiceDescriptorProto
+	file       *FileDescriptor
+	methods    []*MethodDescriptor
+	fqn        string
+	sourceInfo *dpb.SourceCodeInfo_Location
+}
+
+// MethodDescriptor describes an RPC method declared in a proto file.
+type MethodDescriptor struct {
+	proto      *dpb.MethodDescriptorProto
+	parent     *ServiceDescriptor
+	file       *FileDescriptor
+	inType     *MessageDescriptor
+	outType    *MessageDescriptor
+	fqn        string
+	sourceInfo *dpb.SourceCodeInfo_Location
+}
+
+// MessageDescriptor describes a protocol buffer message.
+type MessageDescriptor struct {
+	proto      *dpb.DescriptorProto
+	parent     Descriptor
+	file       *FileDescriptor
+	fields     []*FieldDescriptor
+	nested     []*MessageDescriptor
+	enums      []*EnumDescriptor
+	extensions []*FieldDescriptor
+	oneOfs     []*OneOfDescriptor
+	//extRanges  extRanges
+	fqn        string
+	sourceInfo *dpb.SourceCodeInfo_Location
+	isProto3   bool
+	isMapEntry bool
+}
+
+// FieldDescriptor describes a field of a protocol buffer message.
+type FieldDescriptor struct {
+	proto      *dpb.FieldDescriptorProto
+	parent     Descriptor
+	owner      *MessageDescriptor
+	file       *FileDescriptor
+	oneOf      *OneOfDescriptor
+	msgType    *MessageDescriptor
+	enumType   *EnumDescriptor
+	fqn        string
+	sourceInfo *dpb.SourceCodeInfo_Location
+	isMap      bool
+}
+
+// EnumDescriptor describes an enum declared in a proto file.
+type EnumDescriptor struct {
+	proto       *dpb.EnumDescriptorProto
+	parent      Descriptor
+	file        *FileDescriptor
+	values      []*EnumValueDescriptor
+	valuesByNum sortedValues
+	fqn         string
+	sourceInfo  *dpb.SourceCodeInfo_Location
+}
+
+// EnumValueDescriptor describes an allowed value of an enum declared in a proto file.
+type EnumValueDescriptor struct {
+	proto      *dpb.EnumValueDescriptorProto
+	parent     *EnumDescriptor
+	file       *FileDescriptor
+	fqn        string
+	sourceInfo *dpb.SourceCodeInfo_Location
+}
+
+// OneOfDescriptor describes a one-of field set declared in a protocol buffer message.
+type OneOfDescriptor struct {
+	proto      *dpb.OneofDescriptorProto
+	parent     *MessageDescriptor
+	file       *FileDescriptor
+	choices    []*FieldDescriptor
+	fqn        string
+	sourceInfo *dpb.SourceCodeInfo_Location
+}
