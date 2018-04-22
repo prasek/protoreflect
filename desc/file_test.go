@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/jhump/protoreflect/internal/testutil"
+	"github.com/jhump/protoreflect/proto"
 )
 
 func TestFileDescriptorObjectGraph(t *testing.T) {
@@ -650,6 +650,8 @@ func TestLoadFileDescriptorForWellKnownProtos(t *testing.T) {
 		"google/protobuf/compiler/plugin.proto": {"google.protobuf.compiler.CodeGeneratorRequest"},
 	}
 
+	aliases := proto.Aliases()
+
 	for file, types := range wellKnownProtos {
 		fd, err := LoadFileDescriptor(file)
 		testutil.Ok(t, err)
@@ -660,7 +662,10 @@ func TestLoadFileDescriptorForWellKnownProtos(t *testing.T) {
 		}
 
 		// also try loading via alternate name
-		file = stdFileAliases[file]
+		if aliases == nil {
+			continue
+		}
+		file = aliases[file]
 		if file == "" {
 			// not a file that has a known alternate, so nothing else to check...
 			continue

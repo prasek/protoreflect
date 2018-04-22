@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	"github.com/jhump/protoreflect/proto"
 )
 
 var (
@@ -82,7 +83,7 @@ func putMessageCacheLocked(mds []*MessageDescriptor) {
 // interface implemented by generated messages, which all have a Descriptor() method in
 // addition to the methods of proto.Message
 type protoMessage interface {
-	Message
+	proto.Message
 	Descriptor() ([]byte, []int)
 }
 
@@ -95,7 +96,7 @@ func LoadMessageDescriptor(message string) (*MessageDescriptor, error) {
 		return m, nil
 	}
 
-	pt := protoer.MessageType(message)
+	pt := proto.MessageType(message)
 	if pt == nil {
 		return nil, nil
 	}
@@ -123,7 +124,7 @@ func LoadMessageDescriptorForType(messageType reflect.Type) (*MessageDescriptor,
 // LoadMessageDescriptorForMessage loads descriptor using the encoded descriptor proto
 // returned by message.Descriptor(). If the given type is not recognized, then a nil
 // descriptor is returned.
-func LoadMessageDescriptorForMessage(message Message) (*MessageDescriptor, error) {
+func LoadMessageDescriptorForMessage(message proto.Message) (*MessageDescriptor, error) {
 	// efficiently handle dynamic messages
 	type descriptorable interface {
 		GetMessageDescriptor() *MessageDescriptor
@@ -132,7 +133,7 @@ func LoadMessageDescriptorForMessage(message Message) (*MessageDescriptor, error
 		return d.GetMessageDescriptor(), nil
 	}
 
-	name := protoer.MessageName(message)
+	name := proto.MessageName(message)
 	if name == "" {
 		return nil, nil
 	}
@@ -292,44 +293,22 @@ func findEnum(fd *FileDescriptor, path []int) *EnumDescriptor {
 }
 
 // loadFileDescriptor loads a registered descriptor and decodes it. If the given
-// name cannot be loaded but is a known standard name, an alias will be tried,
+// name cannot be loaded but is a known standard name, an alias will be tried by the proto,
 // so the standard files can be loaded even if linked against older "known bad"
 // versions of packages.
 func loadFileDescriptorProto(file string) (*dpb.FileDescriptorProto, error) {
-	fdb := protoer.FileDescriptor(file)
-	aliased := false
-	if fdb == nil {
-		var ok bool
-		alias, ok := stdFileAliases[file]
-		if ok {
-			//fmt.Printf(" - aliased to: %v\n", alias)
-			aliased = true
-			if fdb = protoer.FileDescriptor(alias); fdb == nil {
-				return nil, fmt.Errorf("No such file: %q -> %q", file, alias)
-			}
-		} else {
-			return nil, fmt.Errorf("No such file: %q", file)
-		}
-	}
+	fdb := proto.FileDescriptor(file)
 
 	fd, err := decodeFileDescriptorProto(file, fdb)
 	if err != nil {
 		return nil, err
 	}
 
-	if aliased {
-		// the file descriptor will have the alias used to load it, but
-		// we need it to have the specified name in order to link it
-		fd.Name = String(file)
-	}
+	// the file descriptor may have been laoded with an alias,
+	// so we ensure the specified name to ensure it can be linked.
+	fd.Name = proto.String(file)
 
 	return fd, nil
-}
-
-// String is a helper routine that allocates a new string value
-// to store v and returns a pointer to it
-func String(v string) *string {
-	return &v
 }
 
 // decodeFileDescriptorProto decodes the bytes of a registered file descriptor.
@@ -342,7 +321,7 @@ func decodeFileDescriptorProto(element string, fdb []byte) (*dpb.FileDescriptorP
 		return nil, fmt.Errorf("failed to decompress %q descriptor: %v", element, err)
 	}
 	fd := dpb.FileDescriptorProto{}
-	if err := protoer.Unmarshal(raw, &fd); err != nil {
+	if err := proto.Unmarshal(raw, &fd); err != nil {
 		return nil, fmt.Errorf("bad descriptor for %q: %v", element, err)
 	}
 	return &fd, nil
