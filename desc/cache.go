@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
@@ -83,7 +82,7 @@ func putMessageCacheLocked(mds []*MessageDescriptor) {
 // interface implemented by generated messages, which all have a Descriptor() method in
 // addition to the methods of proto.Message
 type protoMessage interface {
-	proto.Message
+	Message
 	Descriptor() ([]byte, []int)
 }
 
@@ -96,7 +95,7 @@ func LoadMessageDescriptor(message string) (*MessageDescriptor, error) {
 		return m, nil
 	}
 
-	pt := proto.MessageType(message)
+	pt := protoer.MessageType(message)
 	if pt == nil {
 		return nil, nil
 	}
@@ -124,7 +123,7 @@ func LoadMessageDescriptorForType(messageType reflect.Type) (*MessageDescriptor,
 // LoadMessageDescriptorForMessage loads descriptor using the encoded descriptor proto
 // returned by message.Descriptor(). If the given type is not recognized, then a nil
 // descriptor is returned.
-func LoadMessageDescriptorForMessage(message proto.Message) (*MessageDescriptor, error) {
+func LoadMessageDescriptorForMessage(message Message) (*MessageDescriptor, error) {
 	// efficiently handle dynamic messages
 	type descriptorable interface {
 		GetMessageDescriptor() *MessageDescriptor
@@ -133,7 +132,7 @@ func LoadMessageDescriptorForMessage(message proto.Message) (*MessageDescriptor,
 		return d.GetMessageDescriptor(), nil
 	}
 
-	name := proto.MessageName(message)
+	name := protoer.MessageName(message)
 	if name == "" {
 		return nil, nil
 	}
@@ -292,28 +291,12 @@ func findEnum(fd *FileDescriptor, path []int) *EnumDescriptor {
 	return md.GetNestedEnumTypes()[path[len(path)-1]]
 }
 
-// LoadFieldDescriptorForExtension loads the field descriptor that corresponds to the given
-// extension description.
-func LoadFieldDescriptorForExtension(ext *proto.ExtensionDesc) (*FieldDescriptor, error) {
-	file, err := LoadFileDescriptor(ext.Filename)
-	if err != nil {
-		return nil, err
-	}
-	field, ok := file.FindSymbol(ext.Name).(*FieldDescriptor)
-	// make sure descriptor agrees with attributes of the ExtensionDesc
-	if !ok || !field.IsExtension() || field.GetOwner().GetFullyQualifiedName() != proto.MessageName(ext.ExtendedType) ||
-		field.GetNumber() != ext.Field {
-		return nil, fmt.Errorf("File descriptor contained unexpected object with name %s:", ext.Name)
-	}
-	return field, nil
-}
-
 // loadFileDescriptor loads a registered descriptor and decodes it. If the given
 // name cannot be loaded but is a known standard name, an alias will be tried,
 // so the standard files can be loaded even if linked against older "known bad"
 // versions of packages.
 func loadFileDescriptorProto(file string) (*dpb.FileDescriptorProto, error) {
-	fdb := proto.FileDescriptor(file)
+	fdb := protoer.FileDescriptor(file)
 	aliased := false
 	if fdb == nil {
 		var ok bool
@@ -321,7 +304,7 @@ func loadFileDescriptorProto(file string) (*dpb.FileDescriptorProto, error) {
 		if ok {
 			//fmt.Printf(" - aliased to: %v\n", alias)
 			aliased = true
-			if fdb = proto.FileDescriptor(alias); fdb == nil {
+			if fdb = protoer.FileDescriptor(alias); fdb == nil {
 				return nil, fmt.Errorf("No such file: %q -> %q", file, alias)
 			}
 		} else {
@@ -337,10 +320,16 @@ func loadFileDescriptorProto(file string) (*dpb.FileDescriptorProto, error) {
 	if aliased {
 		// the file descriptor will have the alias used to load it, but
 		// we need it to have the specified name in order to link it
-		fd.Name = proto.String(file)
+		fd.Name = String(file)
 	}
 
 	return fd, nil
+}
+
+// String is a helper routine that allocates a new string value
+// to store v and returns a pointer to it
+func String(v string) *string {
+	return &v
 }
 
 // decodeFileDescriptorProto decodes the bytes of a registered file descriptor.
@@ -353,7 +342,7 @@ func decodeFileDescriptorProto(element string, fdb []byte) (*dpb.FileDescriptorP
 		return nil, fmt.Errorf("failed to decompress %q descriptor: %v", element, err)
 	}
 	fd := dpb.FileDescriptorProto{}
-	if err := proto.Unmarshal(raw, &fd); err != nil {
+	if err := protoer.Unmarshal(raw, &fd); err != nil {
 		return nil, fmt.Errorf("bad descriptor for %q: %v", element, err)
 	}
 	return &fd, nil

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	gogo "github.com/gogo/protobuf/proto"
-	gogod "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
 type Message interface {
@@ -26,6 +26,7 @@ type ExtensionDesc struct {
 
 type Protoer interface {
 	MessageType(name string) reflect.Type
+	MessageName(m Message) string
 	FileDescriptor(name string) []byte
 	Unmarshal(b []byte, m Message) error
 	Marshal(m Message) ([]byte, error)
@@ -40,6 +41,10 @@ func SetProtoer(p Protoer) {
 }
 
 type GoGoProto struct {
+}
+
+func (p *GoGoProto) MessageName(m Message) string {
+	return gogo.MessageName(m)
 }
 
 func (p *GoGoProto) MessageType(name string) reflect.Type {
@@ -76,13 +81,13 @@ func (g *GoGoProto) GetExtension(pb Message, extField int32) (interface{}, error
 		}
 		switch typeName {
 		case "ServiceOptions":
-			pb = &gogod.ServiceOptions{}
+			pb = &dpb.ServiceOptions{}
 			err := g.Unmarshal(b, pb)
 			if err != nil {
 				return nil, err
 			}
 		case "MethodOptions":
-			pb = &gogod.MethodOptions{}
+			pb = &dpb.MethodOptions{}
 			err := g.Unmarshal(b, pb)
 			if err != nil {
 				return nil, err
