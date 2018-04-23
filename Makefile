@@ -80,9 +80,17 @@ generate:
 testcover:
 	@echo go test -covermode=atomic ./... 
 	@echo "mode: atomic" > coverage.out
-	@for dir in $$(go list ./...); do \
+	@for dir in $$(go list ./... | grep -v 'internal/'); do \
 		go test -race -coverprofile profile.out -covermode=atomic $$dir ; \
 		if [ -f profile.out ]; then \
 			tail -n +2 profile.out >> coverage.out && rm profile.out ; \
-		fi \
+		fi; \
+		go test -race -coverprofile profile.out -covermode=atomic -coverpkg $$dir ./internal/gogo/tests; \
+		if [ -f profile.out ]; then \
+			tail -n +2 profile.out >> coverage.out && rm profile.out ; \
+		fi; \
+		go test -race -coverprofile profile.out -covermode=atomic -coverpkg $$dir ./internal/golang/tests; \
+		if [ -f profile.out ]; then \
+			tail -n +2 profile.out >> coverage.out && rm profile.out ; \
+		fi; \
 	done
