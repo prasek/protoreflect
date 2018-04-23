@@ -139,20 +139,54 @@ func (g *protoGoGo) ensureNativeMessage(pb Message) (Message, error) {
 		return nil, err
 	}
 	switch typeName {
+	case "FileDescriptorSet":
+		pb = &dpb.FileDescriptorSet{}
+	case "FileDescriptorProto":
+		pb = &dpb.FileDescriptorProto{}
+	case "DescriptorProto":
+		pb = &dpb.DescriptorProto{}
+	case "ExtensionRangeOptions":
+		pb = &dpb.ExtensionRangeOptions{}
+	case "FieldDescriptorProto":
+		pb = &dpb.FieldDescriptorProto{}
+	case "OneofDescriptorProto":
+		pb = &dpb.OneofDescriptorProto{}
+	case "EnumDescriptorProto":
+		pb = &dpb.EnumDescriptorProto{}
+	case "EnumValueDescriptorProto":
+		pb = &dpb.EnumValueDescriptorProto{}
+	case "ServiceDescriptorProto":
+		pb = &dpb.ServiceDescriptorProto{}
+	case "MethodDescriptorProto":
+		pb = &dpb.MethodDescriptorProto{}
+	case "FileOptions":
+		pb = &dpb.FileOptions{}
+	case "MessageOptions":
+		pb = &dpb.MessageOptions{}
+	case "FieldOptions":
+		pb = &dpb.FieldOptions{}
+	case "OneofOptions":
+		pb = &dpb.OneofOptions{}
+	case "EnumOptions":
+		pb = &dpb.EnumOptions{}
+	case "EnumValueOptions":
+		pb = &dpb.EnumValueOptions{}
 	case "ServiceOptions":
 		pb = &dpb.ServiceOptions{}
-		err := g.Unmarshal(b, pb)
-		if err != nil {
-			return nil, err
-		}
 	case "MethodOptions":
 		pb = &dpb.MethodOptions{}
-		err := g.Unmarshal(b, pb)
-		if err != nil {
-			return nil, err
-		}
+	case "UninterpretedOption":
+		pb = &dpb.UninterpretedOption{}
+	case "SourceCodeInfo":
+		pb = &dpb.SourceCodeInfo{}
+	case "GeneratedCodeInfo":
+		pb = &dpb.GeneratedCodeInfo{}
 	default:
 		return nil, fmt.Errorf("not gogo extendableProto")
+	}
+	err = g.Unmarshal(b, pb)
+	if err != nil {
+		return nil, err
 	}
 	return pb, nil
 }
