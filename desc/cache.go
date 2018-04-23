@@ -10,6 +10,7 @@ import (
 
 	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/jhump/protoreflect/proto"
+	"github.com/jhump/protoreflect/proto/golang"
 )
 
 var (
@@ -18,6 +19,10 @@ var (
 	messagesCache = map[string]*MessageDescriptor{}
 	enumCache     = map[reflect.Type]*EnumDescriptor{}
 )
+
+func init() {
+	proto.SetProtoer(golang.NewProtoer(nil))
+}
 
 // LoadFileDescriptor creates a file descriptor using the bytes returned by
 // proto.FileDescriptor. Descriptors are cached so that they do not need to be
@@ -59,7 +64,7 @@ func toFileDescriptorLocked(fd *dpb.FileDescriptorProto) (*FileDescriptor, error
 			return nil, err
 		}
 	}
-	return createFileDescriptor(fd, deps...)
+	return CreateFileDescriptor(fd, deps...)
 }
 
 func getFileFromCache(file string) *FileDescriptor {

@@ -7,13 +7,25 @@ import (
 	"strings"
 
 	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/jhump/protoreflect/proto"
+	"github.com/jhump/protoreflect/proto/golang"
 )
+
+var golangProtoer = golang.NewProtoer(nil)
 
 // createFileDescriptor instantiates a new file descriptor for the given descriptor proto.
 // The file's direct dependencies must be provided. If the given dependencies do not include
 // all of the file's dependencies or if the contents of the descriptors are internally
 // inconsistent (e.g. contain unresolvable symbols) then an error is returned.
-func createFileDescriptor(fd *dpb.FileDescriptorProto, deps ...*FileDescriptor) (*FileDescriptor, error) {
+func CreateFileDescriptor(fileDescriptorProto proto.Message, deps ...*FileDescriptor) (*FileDescriptor, error) {
+	fileDescriptorProto, err := golangProtoer.EnsureNativeMessage(fileDescriptorProto)
+	if err != nil {
+		return nil, err
+	}
+	fd, ok := fileDescriptorProto.(*dpb.FileDescriptorProto)
+	if !ok {
+		return nil, fmt.Errorf("Not native FileDescriptorProto %T", fd)
+	}
 	ret := &FileDescriptor{proto: fd, symbols: map[string]Descriptor{}, fieldIndex: map[string]map[int32]*FieldDescriptor{}}
 	pkg := fd.GetPackage()
 
@@ -119,7 +131,15 @@ func createFileDescriptors(fds []*dpb.FileDescriptorProto) (map[string]*FileDesc
 // the full set of transitive dependencies of that last file. This is the same format and
 // order used by protoc when emitting a FileDescriptorSet file with an invocation like so:
 //    protoc --descriptor_set_out=./test.protoset --include_imports -I. test.proto
-func createFileDescriptorFromSet(fds *dpb.FileDescriptorSet) (*FileDescriptor, error) {
+func CreateFileDescriptorFromSet(fileDescriptorSet proto.Message) (*FileDescriptor, error) {
+	fileDescriptorSet, err := golangProtoer.EnsureNativeMessage(fileDescriptorSet)
+	if err != nil {
+		return nil, err
+	}
+	fds, ok := fileDescriptorSet.(*dpb.FileDescriptorSet)
+	if !ok {
+		return nil, fmt.Errorf("Not native FileDescriptorSet %T", fds)
+	}
 	files := fds.GetFile()
 	if len(files) == 0 {
 		return nil, errors.New("file descriptor set is empty")
@@ -157,7 +177,7 @@ func createFromSet(filename string, seen []string, files map[string]*dpb.FileDes
 			deps[i] = dep
 		}
 	}
-	d, err := createFileDescriptor(fdp, deps...)
+	d, err := CreateFileDescriptor(fdp, deps...)
 	if err != nil {
 		return nil, err
 	}

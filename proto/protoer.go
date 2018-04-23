@@ -7,7 +7,7 @@ import (
 
 var (
 	mu      sync.RWMutex
-	protoer Protoer = NewGoGoProtoer(defaultGoGoAliases)
+	protoer Protoer
 )
 
 type Message interface {
@@ -23,12 +23,11 @@ type Protoer interface {
 	Unmarshal(b []byte, m Message) error
 	Marshal(m Message) ([]byte, error)
 	GetExtension(pb Message, field int32) (interface{}, error)
+	EnsureNativeMessage(pb Message) (Message, error)
 }
 
-type AliasMap map[string]string
-
 type Aliaser interface {
-	Aliases() AliasMap
+	Aliases() map[string]string
 }
 
 func SetProtoer(p Protoer) {
@@ -73,13 +72,19 @@ func GetExtension(pb Message, field int32) (interface{}, error) {
 	return protoer.GetExtension(pb, field)
 }
 
-func Aliases() AliasMap {
+func EnsureNativeMessage(pb Message) (Message, error) {
+	mu.RLock()
+	defer mu.RUnlock()
+	return protoer.EnsureNativeMessage(pb)
+}
+
+func Aliases() map[string]string {
 	mu.RLock()
 	defer mu.RUnlock()
 	if a, ok := protoer.(Aliaser); ok {
 		return a.Aliases()
 	}
-	return AliasMap{}
+	return map[string]string{}
 }
 
 // String is a helper routine that allocates a new string value
