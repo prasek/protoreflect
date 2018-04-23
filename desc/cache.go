@@ -304,7 +304,7 @@ func findEnum(fd *FileDescriptor, path []int) *EnumDescriptor {
 func loadFileDescriptorProto(file string) (*dpb.FileDescriptorProto, error) {
 	fdb := proto.FileDescriptor(file)
 	if fdb == nil {
-		return nil, fmt.Errorf("Missing file descriptor %s", file)
+		return nil, fmt.Errorf("Missing file descriptor %s. If you're using gogo/protobuf, ensure proto.SetProtoer(gogo.NewProtoer(nil)) has been called.", file)
 	}
 
 	fd, err := decodeFileDescriptorProto(file, fdb)
