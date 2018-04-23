@@ -21,14 +21,6 @@ func (sv sortedValues) Swap(i, j int) {
 	sv[i], sv[j] = sv[j], sv[i]
 }
 
-func (ed *EnumDescriptor) resolve(path []int32, sourceCodeInfo sourceInfoMap) {
-	ed.sourceInfo = sourceCodeInfo.Get(path)
-	path = append(path, Enum_valuesTag)
-	for i, evd := range ed.values {
-		evd.resolve(append(path, int32(i)), sourceCodeInfo)
-	}
-}
-
 func (ed *EnumDescriptor) GetName() string {
 	return ed.proto.GetName()
 }

@@ -153,6 +153,14 @@ func (fd *FieldDescriptor) resolve(path []int32, sourceCodeInfo sourceInfoMap, s
 	return nil
 }
 
+func (ed *EnumDescriptor) resolve(path []int32, sourceCodeInfo sourceInfoMap) {
+	ed.sourceInfo = sourceCodeInfo.Get(path)
+	path = append(path, Enum_valuesTag)
+	for i, evd := range ed.values {
+		evd.resolve(append(path, int32(i)), sourceCodeInfo)
+	}
+}
+
 func (vd *EnumValueDescriptor) resolve(path []int32, sourceCodeInfo sourceInfoMap) {
 	vd.sourceInfo = sourceCodeInfo.Get(path)
 }
