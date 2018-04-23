@@ -2,8 +2,6 @@ package desc
 
 import dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 
-//import dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
-
 // Descriptor is the common interface implemented by all descriptor objects.
 type Descriptor interface {
 	// GetName returns the name of the object described by the descriptor. This will

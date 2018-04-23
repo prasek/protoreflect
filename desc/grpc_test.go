@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/jhump/protoreflect/internal/testprotos"
-	"github.com/stretchr/testify/require"
+	"github.com/jhump/protoreflect/internal/testutil"
 )
 
 var _TestService_serviceDesc = grpc.ServiceDesc{
@@ -50,8 +50,8 @@ func TestLoadServiceDescriptors(t *testing.T) {
 	s := grpc.NewServer()
 	testprotos.RegisterTestServiceServer(s, testService{})
 	sds, err := LoadServiceDescriptors(s)
-	require.Nil(t, err, err)
-	require.Equal(t, 1, len(sds), "service descriptor len")
+	testutil.Ok(t, err, err)
+	testutil.Eq(t, 1, len(sds), "service descriptor len")
 	sd := sds["testprotos.TestService"]
 
 	cases := []struct {
@@ -65,23 +65,23 @@ func TestLoadServiceDescriptors(t *testing.T) {
 		{"DoSomethingForever", "testprotos.TestRequest", "testprotos.TestResponse", false, nil},
 	}
 
-	require.Equal(t, len(cases), len(sd.GetMethods()))
+	testutil.Eq(t, len(cases), len(sd.GetMethods()))
 
 	for i, c := range cases {
 		md := sd.GetMethods()[i]
-		require.Equal(t, c.method, md.GetName())
-		require.Equal(t, c.request, md.GetInputType().GetFullyQualifiedName())
-		require.Equal(t, c.response, md.GetOutputType().GetFullyQualifiedName())
-		require.Equal(t, c.opt, md.GetBoolExtension(testprotos.E_Custom.Field, false))
+		testutil.Eq(t, c.method, md.GetName())
+		testutil.Eq(t, c.request, md.GetInputType().GetFullyQualifiedName())
+		testutil.Eq(t, c.response, md.GetOutputType().GetFullyQualifiedName())
+		testutil.Eq(t, c.opt, md.GetBoolExtension(testprotos.E_Custom.Field, false))
 
 		v, err := md.GetExtension(testprotos.E_Custom2.Field)
 		if v != nil {
-			require.Nil(t, err)
+			testutil.Ok(t, err)
 		}
 		if c.custom2 == nil {
-			require.Nil(t, c.custom2, v)
+			testutil.Nil(t, v)
 		} else {
-			require.Equal(t, c.custom2, v)
+			testutil.Eq(t, c.custom2, v)
 		}
 	}
 }
@@ -90,8 +90,8 @@ func TestLoadServiceDescriptor(t *testing.T) {
 	s := grpc.NewServer()
 	testprotos.RegisterTestServiceServer(s, testService{})
 	sd, err := LoadServiceDescriptor(&_TestService_serviceDesc)
-	require.Nil(t, err)
-	require.NotNil(t, sd, "Service descriptor missing")
+	testutil.Nil(t, err)
+	testutil.NotNil(t, sd, "Service descriptor missing")
 
 	cases := []struct{ method, request, response string }{
 		{"DoSomething", "testprotos.TestRequest", "jhump.protoreflect.desc.Bar"},
@@ -100,12 +100,12 @@ func TestLoadServiceDescriptor(t *testing.T) {
 		{"DoSomethingForever", "testprotos.TestRequest", "testprotos.TestResponse"},
 	}
 
-	require.Equal(t, len(cases), len(sd.GetMethods()))
+	testutil.Eq(t, len(cases), len(sd.GetMethods()))
 
 	for i, c := range cases {
 		md := sd.GetMethods()[i]
-		require.Equal(t, c.method, md.GetName())
-		require.Equal(t, c.request, md.GetInputType().GetFullyQualifiedName())
-		require.Equal(t, c.response, md.GetOutputType().GetFullyQualifiedName())
+		testutil.Eq(t, c.method, md.GetName())
+		testutil.Eq(t, c.request, md.GetInputType().GetFullyQualifiedName())
+		testutil.Eq(t, c.response, md.GetOutputType().GetFullyQualifiedName())
 	}
 }

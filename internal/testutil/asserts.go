@@ -120,6 +120,16 @@ func Nok(t *testing.T, err error, context ...interface{}) {
 	require(getCaller(), t, err != nil, mergeContext(context, "Expected error but got none"))
 }
 
+// NotNil asserts that the given error is nil
+func Nil(t *testing.T, v interface{}, context ...interface{}) {
+	require(getCaller(), t, isNil(v), mergeContext(context, "Expeceted nil"))
+}
+
+// Ok asserts that the given error is nil
+func NotNil(t *testing.T, v interface{}, context ...interface{}) {
+	require(getCaller(), t, !isNil(v), mergeContext(context, "Expeceted not nil"))
+}
+
 // Eq asserts that the given two values are equal
 func Eq(t *testing.T, expected, actual interface{}, context ...interface{}) bool {
 	return ceq(getCaller(), t, expected, actual, eqany, context)
@@ -132,11 +142,23 @@ func Neq(t *testing.T, unexpected, actual interface{}, context ...interface{}) b
 
 // default equality test and helpers
 
-func eqany(expected, actual interface{}) bool {
-	if expected == nil && actual == nil {
+func isNil(v interface{}) bool {
+	if v == nil {
 		return true
 	}
-	if expected == nil || actual == nil {
+	value := reflect.ValueOf(v)
+	kind := value.Kind()
+	if kind >= reflect.Chan && kind <= reflect.Slice && value.IsNil() {
+		return true
+	}
+	return false
+}
+
+func eqany(expected, actual interface{}) bool {
+	if isNil(expected) && isNil(actual) {
+		return true
+	}
+	if isNil(expected) || isNil(actual) {
 		return false
 	}
 
@@ -146,13 +168,32 @@ func eqany(expected, actual interface{}) bool {
 	// other. Two maps are equal if their key sets are the same and the corresponding
 	// values are equal. (The relationship is not recursive,  slices or maps that
 	// contain other slices or maps can't be tested.)
+	expt := reflect.TypeOf(expected)
+	actt := reflect.TypeOf(actual)
+	if expt != actt {
+		return false
+	}
+
+	if expt.Kind() == reflect.Ptr {
+		expv := reflect.ValueOf(expected)
+		expected = expv.Elem().Interface()
+	}
+
+	if actt.Kind() == reflect.Ptr {
+		actv := reflect.ValueOf(actual)
+		actual = actv.Elem().Interface()
+	}
+
 	et := reflect.TypeOf(expected)
 
-	if et.Kind() == reflect.Slice {
+	switch et.Kind() {
+	case reflect.Slice:
 		return eqslice(reflect.ValueOf(expected), reflect.ValueOf(actual))
-	} else if et.Kind() == reflect.Map {
+	case reflect.Map:
 		return eqmap(reflect.ValueOf(expected), reflect.ValueOf(actual))
-	} else {
+	case reflect.Struct:
+		return reflect.DeepEqual(expected, actual)
+	default:
 		return eqscalar(expected, actual)
 	}
 }

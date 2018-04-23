@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
-	//dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/jhump/protoreflect/internal/testutil"
 	"github.com/jhump/protoreflect/proto"
 )
