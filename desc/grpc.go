@@ -40,6 +40,10 @@ func (info *InterceptorInfo) register(fqn string, sd *ServiceDescriptor, md *Met
 	info.methods[fqn] = &InterceptorInfoEntry{Service: sd, Method: md}
 }
 
+func (info *InterceptorInfo) Get(fqn string) *InterceptorInfoEntry {
+	return info.methods[fqn]
+}
+
 // LoadServiceDescriptors loads the service descriptors for all services exposed by the
 // given GRPC server.
 func LoadServiceDescriptors(s *grpc.Server) (map[string]*ServiceDescriptor, error) {
