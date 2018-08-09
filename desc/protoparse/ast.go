@@ -4,11 +4,14 @@ import "fmt"
 
 // This file defines all of the nodes in the proto AST.
 
+// ErrorWithSourcePos is an error about a proto source file includes information
+// about the location in the file that caused the error.
 type ErrorWithSourcePos struct {
 	Underlying error
 	Pos        *SourcePos
 }
 
+// Error implements the error interface
 func (e ErrorWithSourcePos) Error() string {
 	if e.Pos.Line <= 0 || e.Pos.Col <= 0 {
 		return fmt.Sprintf("%s: %v", e.Pos.Filename, e.Underlying)
@@ -16,6 +19,7 @@ func (e ErrorWithSourcePos) Error() string {
 	return fmt.Sprintf("%s:%d:%d: %v", e.Pos.Filename, e.Pos.Line, e.Pos.Col, e.Underlying)
 }
 
+// SourcePos identifies a location in a proto source file.
 type SourcePos struct {
 	Filename  string
 	Line, Col int
@@ -711,15 +715,16 @@ type extensionRangeNode struct {
 
 type rangeNode struct {
 	basicCompositeNode
-	st, en *intLiteralNode
+	stNode, enNode node
+	st, en         int32
 }
 
 func (n *rangeNode) rangeStart() node {
-	return n.st
+	return n.stNode
 }
 
 func (n *rangeNode) rangeEnd() node {
-	return n.en
+	return n.enNode
 }
 
 type reservedNode struct {
@@ -732,13 +737,21 @@ type enumNode struct {
 	basicCompositeNode
 	name  *identNode
 	decls []*enumElement
+
+	// This field is populated after parsing, to make it easier to find them
+	// without searching decls. The parse result has a map of descriptors to
+	// nodes which makes the other declarations easily discoverable. But these
+	// elements do not map to descriptors -- they are just stored as strings in
+	// the message descriptor.
+	reserved []*stringLiteralNode
 }
 
 type enumElement struct {
 	// a discriminated union: only one field will be set
-	option *optionNode
-	value  *enumValueNode
-	empty  *basicNode
+	option   *optionNode
+	value    *enumValueNode
+	reserved *reservedNode
+	empty    *basicNode
 }
 
 func (n *enumElement) start() *SourcePos {
@@ -772,9 +785,11 @@ type enumValueNode struct {
 	basicCompositeNode
 	name    *identNode
 	options []*optionNode
-	// only one of these two will be set
-	number  *intLiteralNode
-	numberN *negativeIntLiteralNode
+
+	// only one of these two will be set:
+
+	numberP *intLiteralNode         // positive numeric value
+	numberN *negativeIntLiteralNode // negative numeric value
 }
 
 func (n *enumValueNode) getName() node {
@@ -782,8 +797,8 @@ func (n *enumValueNode) getName() node {
 }
 
 func (n *enumValueNode) getNumber() node {
-	if n.number != nil {
-		return n.number
+	if n.numberP != nil {
+		return n.numberP
 	}
 	return n.numberN
 }

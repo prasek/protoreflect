@@ -284,7 +284,7 @@ func (r *MessageRegistry) ResolveApiIntoServiceDescriptor(a *types.Api) (*desc.S
 	// now we add all types we care about to a typeTrie and use that to generate file descriptors
 	files := map[string]*fileEntry{}
 	fe := &fileEntry{}
-	fe.proto3 = a.Syntax == types.SYNTAX_PROTO3
+	fe.proto3 = a.Syntax == types.Syntax_SYNTAX_PROTO3
 	files[fileName] = fe
 	fe.types.addType(a.Name, createServiceDescriptor(a, r))
 	added := map[string]struct{}{}
@@ -465,55 +465,55 @@ func (r *MessageRegistry) fieldAsPType(fd *desc.FieldDescriptor) *types.Field {
 	var card types.Field_Cardinality
 	switch fd.GetLabel() {
 	case descriptor.FieldDescriptorProto_LABEL_OPTIONAL:
-		card = types.CARDINALITY_OPTIONAL
+		card = types.Field_CARDINALITY_OPTIONAL
 	case descriptor.FieldDescriptorProto_LABEL_REPEATED:
-		card = types.CARDINALITY_REPEATED
+		card = types.Field_CARDINALITY_REPEATED
 	case descriptor.FieldDescriptorProto_LABEL_REQUIRED:
-		card = types.CARDINALITY_REQUIRED
+		card = types.Field_CARDINALITY_REQUIRED
 	}
 
 	var url string
 	var kind types.Field_Kind
 	switch fd.GetType() {
 	case descriptor.FieldDescriptorProto_TYPE_ENUM:
-		kind = types.TYPE_ENUM
+		kind = types.Field_TYPE_ENUM
 		url = r.asUrl(fd.GetEnumType().GetFullyQualifiedName(), fd.GetFile().GetPackage())
 	case descriptor.FieldDescriptorProto_TYPE_GROUP:
-		kind = types.TYPE_GROUP
+		kind = types.Field_TYPE_GROUP
 		url = r.asUrl(fd.GetMessageType().GetFullyQualifiedName(), fd.GetFile().GetPackage())
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-		kind = types.TYPE_MESSAGE
+		kind = types.Field_TYPE_MESSAGE
 		url = r.asUrl(fd.GetMessageType().GetFullyQualifiedName(), fd.GetFile().GetPackage())
 	case descriptor.FieldDescriptorProto_TYPE_BYTES:
-		kind = types.TYPE_BYTES
+		kind = types.Field_TYPE_BYTES
 	case descriptor.FieldDescriptorProto_TYPE_STRING:
-		kind = types.TYPE_STRING
+		kind = types.Field_TYPE_STRING
 	case descriptor.FieldDescriptorProto_TYPE_BOOL:
-		kind = types.TYPE_BOOL
+		kind = types.Field_TYPE_BOOL
 	case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
-		kind = types.TYPE_DOUBLE
+		kind = types.Field_TYPE_DOUBLE
 	case descriptor.FieldDescriptorProto_TYPE_FLOAT:
-		kind = types.TYPE_FLOAT
+		kind = types.Field_TYPE_FLOAT
 	case descriptor.FieldDescriptorProto_TYPE_FIXED32:
-		kind = types.TYPE_FIXED32
+		kind = types.Field_TYPE_FIXED32
 	case descriptor.FieldDescriptorProto_TYPE_FIXED64:
-		kind = types.TYPE_FIXED64
+		kind = types.Field_TYPE_FIXED64
 	case descriptor.FieldDescriptorProto_TYPE_INT32:
-		kind = types.TYPE_INT32
+		kind = types.Field_TYPE_INT32
 	case descriptor.FieldDescriptorProto_TYPE_INT64:
-		kind = types.TYPE_INT64
+		kind = types.Field_TYPE_INT64
 	case descriptor.FieldDescriptorProto_TYPE_SFIXED32:
-		kind = types.TYPE_SFIXED32
+		kind = types.Field_TYPE_SFIXED32
 	case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
-		kind = types.TYPE_SFIXED64
+		kind = types.Field_TYPE_SFIXED64
 	case descriptor.FieldDescriptorProto_TYPE_SINT32:
-		kind = types.TYPE_SINT32
+		kind = types.Field_TYPE_SINT32
 	case descriptor.FieldDescriptorProto_TYPE_SINT64:
-		kind = types.TYPE_SINT64
+		kind = types.Field_TYPE_SINT64
 	case descriptor.FieldDescriptorProto_TYPE_UINT32:
-		kind = types.TYPE_UINT32
+		kind = types.Field_TYPE_UINT32
 	case descriptor.FieldDescriptorProto_TYPE_UINT64:
-		kind = types.TYPE_UINT64
+		kind = types.Field_TYPE_UINT64
 	}
 
 	return &types.Field{
@@ -671,9 +671,9 @@ func wrap(v reflect.Value) proto.Message {
 
 func syntax(fd *desc.FileDescriptor) types.Syntax {
 	if fd.IsProto3() {
-		return types.SYNTAX_PROTO3
+		return types.Syntax_SYNTAX_PROTO3
 	} else {
-		return types.SYNTAX_PROTO2
+		return types.Syntax_SYNTAX_PROTO2
 	}
 }
 
