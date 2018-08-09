@@ -231,6 +231,7 @@ func TestMarshalJSONIndentEmbedWellKnownTypes(t *testing.T) {
 	anys[1], err = types.MarshalAny(&testprotos.TestRequest{Bar: "bar"})
 	testutil.Ok(t, err)
 	anys[2], err = types.MarshalAny(&testprotos.TestRequest{Bar: "baz"})
+	testutil.Ok(t, err)
 	dm.SetFieldByNumber(13, anys)
 
 	js, err := dm.MarshalJSON()

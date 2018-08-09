@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,13 +19,49 @@ import (
 	"github.com/jhump/protoreflect/dynamic"
 )
 
+// Printer knows how to format file descriptors as proto source code. Its fields
+// provide some control over how the resulting source file is constructed and
+// formatted.
 type Printer struct {
+	// If true, comments are rendered using "/*" style comments. Otherwise, they
+	// are printed using "//" style line comments.
 	PreferMultiLineStyleComments bool
-	SortElements                 bool
-	Indent                       string
-	OmitDetachedComments         bool
+	// If true, elements are sorted into a canonical order.
+	//
+	// The canonical order for elements in a file follows:
+	//  1. Syntax
+	//  2. Options (sorted by name, standard options before custom options)
+	//  3. Package
+	//  4. Imports (sorted lexically)
+	//  5. Messages (sorted by name)
+	//  6. Enums (sorted by name)
+	//  7. Services (sorted by name)
+	//  8. Extensions (grouped by extendee, sorted by extendee+tag)
+	//
+	// The canonical order of elements in a message follows:
+	//  1. Options (sorted by name, standard options before custom options)
+	//  2. Fields and One-Ofs (sorted by tag; one-ofs interleaved based on the
+	//     minimum tag therein)
+	//  3. Nested Messages (sorted by name)
+	//  4. Nested Enums (sorted by name)
+	//  5. Extension ranges (sorted by starting tag number)
+	//  6. Nested Extensions (grouped by extendee, sorted by extendee+tag)
+	//  7. Reserved ranges (sorted by starting tag number)
+	//  8. Reserved names (sorted lexically)
+	//
+	// Methods are sorted within a service by name. Enum values are sorted
+	// within an enum first by numeric value then by name.
+	SortElements bool
+	// The indentation used. Any characters other spaces or tabs will be
+	// replaced with spaces. If unset/empty, two spaces will be used.
+	Indent string
+	// If true, detached comments (between elements) will be ignored.
+	OmitDetachedComments bool
 }
 
+// PrintProtoFiles prints all of the given file descriptors. The given open
+// function is given a file name and is responsible for creating the outputs and
+// returning the corresponding writer.
 func (p *Printer) PrintProtoFiles(fds []*desc.FileDescriptor, open func(name string) (io.WriteCloser, error)) error {
 	for _, fd := range fds {
 		w, err := open(fd.GetName())
@@ -42,9 +79,17 @@ func (p *Printer) PrintProtoFiles(fds []*desc.FileDescriptor, open func(name str
 	return nil
 }
 
+// PrintProtosToFileSystem prints all of the given file descriptors to files in
+// the given directory. If file names in the given descriptors include path
+// information, they will be relative to the given root.
 func (p *Printer) PrintProtosToFileSystem(fds []*desc.FileDescriptor, rootDir string) error {
 	return p.PrintProtoFiles(fds, func(name string) (io.WriteCloser, error) {
-		return os.OpenFile(filepath.Join(rootDir, name), os.O_CREATE|os.O_WRONLY, 0666)
+		fullPath := filepath.Join(rootDir, name)
+		dir := filepath.Dir(fullPath)
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return nil, err
+		}
+		return os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	})
 }
 
@@ -63,6 +108,12 @@ type option struct {
 	val  interface{}
 }
 
+// reservedRange represents a reserved range from a message or enum
+type reservedRange struct {
+	start, end int32
+}
+
+// PrintProtoFile prints the given single file descriptor to the given writer.
 func (p *Printer) PrintProtoFile(fd *desc.FileDescriptor, w io.Writer) error {
 	out := &printer{Writer: w}
 	if p.Indent == "" {
@@ -396,21 +447,21 @@ func (p *Printer) printMessageBody(md *desc.MessageDescriptor, mf *dynamic.Messa
 					skip[extr] = true
 				}
 				p.printExtensionRanges(ranges, addrs, mf, w, sourceInfo, path, indent)
-			case *descriptor.DescriptorProto_ReservedRange:
+			case reservedRange:
 				// collapse reserved ranges into a single "reserved" block
-				ranges := []*descriptor.DescriptorProto_ReservedRange{d}
+				ranges := []reservedRange{d}
 				addrs := []elementAddr{el}
 				for idx := i + 1; idx < len(elements.addrs); idx++ {
 					elnext := elements.addrs[idx]
 					if elnext.elementType != el.elementType {
 						break
 					}
-					rr := elements.at(elnext).(*descriptor.DescriptorProto_ReservedRange)
+					rr := elements.at(elnext).(reservedRange)
 					ranges = append(ranges, rr)
 					addrs = append(addrs, elnext)
 					skip[rr] = true
 				}
-				p.printReservedRanges(ranges, addrs, w, sourceInfo, path, indent)
+				p.printReservedRanges(ranges, false, addrs, w, sourceInfo, path, indent)
 			case string: // reserved name
 				// collapse reserved names into a single "reserved" block
 				names := []string{d}
@@ -707,12 +758,12 @@ func (p *Printer) printExtensionRanges(ranges []*descriptor.DescriptorProto_Exte
 	fmt.Fprintln(w, ";")
 }
 
-func (p *Printer) printReservedRanges(ranges []*descriptor.DescriptorProto_ReservedRange, addrs []elementAddr, w *printer, sourceInfo internal.SourceInfoMap, parentPath []int32, indent int) {
+func (p *Printer) printReservedRanges(ranges []reservedRange, isEnum bool, addrs []elementAddr, w *printer, sourceInfo internal.SourceInfoMap, parentPath []int32, indent int) {
 	p.indent(w, indent)
 	fmt.Fprint(w, "reserved ")
 
 	first := true
-	for i, extr := range ranges {
+	for i, rr := range ranges {
 		if first {
 			first = false
 		} else {
@@ -721,12 +772,13 @@ func (p *Printer) printReservedRanges(ranges []*descriptor.DescriptorProto_Reser
 		el := addrs[i]
 		si := sourceInfo.Get(append(parentPath, el.elementType, int32(el.elementIndex)))
 		p.printElement(si, w, inline(indent), func(w *printer) {
-			if extr.GetStart() == extr.GetEnd()-1 {
-				fmt.Fprintf(w, "%d ", extr.GetStart())
-			} else if extr.GetEnd()-1 == internal.MaxTag {
-				fmt.Fprintf(w, "%d to max ", extr.GetStart())
+			if rr.start == rr.end {
+				fmt.Fprintf(w, "%d ", rr.start)
+			} else if (rr.end == internal.MaxTag && !isEnum) ||
+				(rr.end == math.MaxInt32 && isEnum) {
+				fmt.Fprintf(w, "%d to max ", rr.start)
 			} else {
-				fmt.Fprintf(w, "%d to %d ", extr.GetStart(), extr.GetEnd()-1)
+				fmt.Fprintf(w, "%d to %d ", rr.start, rr.end)
 			}
 		})
 	}
@@ -772,26 +824,73 @@ func (p *Printer) printEnum(ed *desc.EnumDescriptor, mf *dynamic.MessageFactory,
 			return
 		}
 
+		skip := map[interface{}]bool{}
+
 		elements := elementAddrs{dsc: ed, opts: opts}
 		elements.addrs = append(elements.addrs, optionsAsElementAddrs(internal.Enum_optionsTag, -1, opts)...)
 		for i := range ed.GetValues() {
 			elements.addrs = append(elements.addrs, elementAddr{elementType: internal.Enum_valuesTag, elementIndex: i})
 		}
+		for i := range ed.AsEnumDescriptorProto().GetReservedRange() {
+			elements.addrs = append(elements.addrs, elementAddr{elementType: internal.Enum_reservedRangeTag, elementIndex: i})
+		}
+		for i := range ed.AsEnumDescriptorProto().GetReservedName() {
+			elements.addrs = append(elements.addrs, elementAddr{elementType: internal.Enum_reservedNameTag, elementIndex: i})
+		}
 
 		p.sort(elements, sourceInfo, path)
 
 		for i, el := range elements.addrs {
+			d := elements.at(el)
+
+			// skip[d] will panic if d is a slice (which it could be for []option),
+			// so just ignore it since we don't try to skip options
+			if reflect.TypeOf(d).Kind() != reflect.Slice && skip[d] {
+				// skip this element
+				continue
+			}
+
 			if i > 0 {
 				fmt.Fprintln(w)
 			}
 
 			childPath := append(path, el.elementType, int32(el.elementIndex))
 
-			switch d := elements.at(el).(type) {
+			switch d := d.(type) {
 			case []option:
 				p.printOptionsLong(d, w, sourceInfo, childPath, indent)
 			case *desc.EnumValueDescriptor:
 				p.printEnumValue(d, mf, w, sourceInfo, childPath, indent)
+			case reservedRange:
+				// collapse reserved ranges into a single "reserved" block
+				ranges := []reservedRange{d}
+				addrs := []elementAddr{el}
+				for idx := i + 1; idx < len(elements.addrs); idx++ {
+					elnext := elements.addrs[idx]
+					if elnext.elementType != el.elementType {
+						break
+					}
+					rr := elements.at(elnext).(reservedRange)
+					ranges = append(ranges, rr)
+					addrs = append(addrs, elnext)
+					skip[rr] = true
+				}
+				p.printReservedRanges(ranges, true, addrs, w, sourceInfo, path, indent)
+			case string: // reserved name
+				// collapse reserved names into a single "reserved" block
+				names := []string{d}
+				addrs := []elementAddr{el}
+				for idx := i + 1; idx < len(elements.addrs); idx++ {
+					elnext := elements.addrs[idx]
+					if elnext.elementType != el.elementType {
+						break
+					}
+					rn := elements.at(elnext).(string)
+					names = append(names, rn)
+					addrs = append(addrs, elnext)
+					skip[rn] = true
+				}
+				p.printReservedNames(names, addrs, w, sourceInfo, path, indent)
 			}
 		}
 
@@ -1007,20 +1106,6 @@ func inline(indent int) int {
 	}
 	// negative indent means inline; indent 2 stops further in case value wraps
 	return -indent - 2
-}
-
-type sortedFields []*desc.FieldDescriptor
-
-func (f sortedFields) Len() int {
-	return len(f)
-}
-
-func (f sortedFields) Swap(i, j int) {
-	f[i], f[j] = f[j], f[i]
-}
-
-func (f sortedFields) Less(i, j int) bool {
-	return f[i].GetNumber() < f[j].GetNumber()
 }
 
 func sortKeys(m map[interface{}]interface{}) []interface{} {
@@ -1431,9 +1516,9 @@ func (a elementAddrs) Less(i, j int) bool {
 		// extension ranges ordered by tag
 		return vi.GetStart() < dj.(*descriptor.DescriptorProto_ExtensionRange).GetStart()
 
-	case *descriptor.DescriptorProto_ReservedRange:
+	case reservedRange:
 		// reserved ranges ordered by tag, too
-		return vi.GetStart() < dj.(*descriptor.DescriptorProto_ReservedRange).GetStart()
+		return vi.start < dj.(reservedRange).start
 
 	case string:
 		// reserved names lexically sorted
@@ -1495,7 +1580,8 @@ func (a elementAddrs) at(addr elementAddr) interface{} {
 		case internal.Message_extensionRangeTag:
 			return dsc.AsDescriptorProto().GetExtensionRange()[addr.elementIndex]
 		case internal.Message_reservedRangeTag:
-			return dsc.AsDescriptorProto().GetReservedRange()[addr.elementIndex]
+			rng := dsc.AsDescriptorProto().GetReservedRange()[addr.elementIndex]
+			return reservedRange{start: rng.GetStart(), end: rng.GetEnd() - 1}
 		case internal.Message_reservedNameTag:
 			return dsc.AsDescriptorProto().GetReservedName()[addr.elementIndex]
 		}
@@ -1516,7 +1602,11 @@ func (a elementAddrs) at(addr elementAddr) interface{} {
 			return a.opts[int32(addr.elementIndex)]
 		case internal.Enum_valuesTag:
 			return dsc.GetValues()[addr.elementIndex]
-			// TODO: reserved numbers and tags
+		case internal.Enum_reservedRangeTag:
+			rng := dsc.AsEnumDescriptorProto().GetReservedRange()[addr.elementIndex]
+			return reservedRange{start: rng.GetStart(), end: rng.GetEnd()}
+		case internal.Enum_reservedNameTag:
+			return dsc.AsEnumDescriptorProto().GetReservedName()[addr.elementIndex]
 		}
 	case *desc.EnumValueDescriptor:
 		if addr.elementType == internal.EnumVal_optionsTag {
@@ -1583,7 +1673,8 @@ func (a elementSrcOrder) Less(i, j int) bool {
 		swapped := false
 		if si != nil {
 			si, sj = sj, si
-			ti, tj = tj, ti
+			// no need to swap ti and tj because we don't use tj anywhere below
+			ti = tj
 			swapped = true
 		}
 		switch a.dsc.(type) {

@@ -79,9 +79,9 @@ func TestCachingTypeFetcher_MismatchType(t *testing.T) {
 	testutil.Eq(t, "fee.fi.fo.Foo", en.Name)
 
 	// now ask for same URL, but swapped types
-	pm, err = fetcher("blah.blah.blah/fee.fi.fo.Fum", true)
+	_, err = fetcher("blah.blah.blah/fee.fi.fo.Fum", true)
 	testutil.Require(t, err != nil && strings.Contains(err.Error(), "wanted enum, got message"))
-	pm, err = fetcher("blah.blah.blah/fee.fi.fo.Foo", false)
+	_, err = fetcher("blah.blah.blah/fee.fi.fo.Foo", false)
 	testutil.Require(t, err != nil && strings.Contains(err.Error(), "wanted message, got enum"))
 }
 
@@ -261,7 +261,7 @@ func testFetcher(url string, enum bool) (proto.Message, error) {
 		return &types.Enum{
 			Name:          name,
 			SourceContext: &types.SourceContext{FileName: "test.proto"},
-			Syntax:        types.SYNTAX_PROTO3,
+			Syntax:        types.Syntax_SYNTAX_PROTO3,
 			Enumvalue: []*types.EnumValue{
 				{Name: "A", Number: 0},
 				{Name: "B", Number: 1},
@@ -272,15 +272,15 @@ func testFetcher(url string, enum bool) (proto.Message, error) {
 		return &types.Type{
 			Name:          name,
 			SourceContext: &types.SourceContext{FileName: "test.proto"},
-			Syntax:        types.SYNTAX_PROTO3,
+			Syntax:        types.Syntax_SYNTAX_PROTO3,
 			Fields: []*types.Field{
-				{Name: "a", Number: 1, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_INT64},
-				{Name: "b", Number: 2, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_STRING},
-				{Name: "c1", Number: 3, OneofIndex: 1, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_STRING},
-				{Name: "c2", Number: 4, OneofIndex: 1, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_BOOL},
-				{Name: "c3", Number: 5, OneofIndex: 1, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_DOUBLE},
-				{Name: "d", Number: 6, Cardinality: types.CARDINALITY_REPEATED, Kind: types.TYPE_MESSAGE, TypeUrl: "type.googleapis.com/foo.bar.Baz"},
-				{Name: "e", Number: 7, Cardinality: types.CARDINALITY_OPTIONAL, Kind: types.TYPE_ENUM, TypeUrl: "type.googleapis.com/foo.bar.Blah"},
+				{Name: "a", Number: 1, Cardinality: types.Field_CARDINALITY_OPTIONAL, Kind: types.Field_TYPE_INT64},
+				{Name: "b", Number: 2, Cardinality: types.Field_CARDINALITY_OPTIONAL, Kind: types.Field_TYPE_STRING},
+				{Name: "c1", Number: 3, OneofIndex: 1, Cardinality: types.Field_CARDINALITY_OPTIONAL, Kind: types.Field_TYPE_STRING},
+				{Name: "c2", Number: 4, OneofIndex: 1, Cardinality: types.Field_CARDINALITY_OPTIONAL, Kind: types.Field_TYPE_BOOL},
+				{Name: "c3", Number: 5, OneofIndex: 1, Cardinality: types.Field_CARDINALITY_OPTIONAL, Kind: types.Field_TYPE_DOUBLE},
+				{Name: "d", Number: 6, Cardinality: types.Field_CARDINALITY_REPEATED, Kind: types.Field_TYPE_MESSAGE, TypeUrl: "type.googleapis.com/foo.bar.Baz"},
+				{Name: "e", Number: 7, Cardinality: types.Field_CARDINALITY_OPTIONAL, Kind: types.Field_TYPE_ENUM, TypeUrl: "type.googleapis.com/foo.bar.Blah"},
 			},
 			Oneofs: []string{"union"},
 		}, nil

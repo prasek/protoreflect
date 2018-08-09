@@ -12,8 +12,8 @@ import (
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
-// These are standard protos included with protoc, but older versions of their
-// respective packages registered them using incorrect paths.
+// StdFileAliases are the standard protos included with protoc, but older versions of
+// their respective packages registered them using incorrect paths.
 var StdFileAliases = map[string]string{
 	// File mappings for gogo/protobuf:
 	// version: 1ef32a8b9fc3f8ec940126907cedb5998f6318e4

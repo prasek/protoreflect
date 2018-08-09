@@ -167,8 +167,9 @@ func HttpTypeFetcher(transport http.RoundTripper, szLimit, parLimit int) TypeFet
 		}
 
 		// download the response, up to the given size limit, into a buffer
-		buf := bufferPool.Get().([]byte)
-		defer bufferPool.Put(buf)
+		bufptr := bufferPool.Get().(*[]byte)
+		defer bufferPool.Put(bufptr)
+		buf := *bufptr
 		var b bytes.Buffer
 		for {
 			n, err := resp.Body.Read(buf)
@@ -212,7 +213,8 @@ func ensureScheme(url string) string {
 }
 
 var bufferPool = sync.Pool{New: func() interface{} {
-	return make([]byte, 8192)
+	buf := make([]byte, 8192)
+	return &buf
 }}
 
 type semaphore struct {
@@ -466,7 +468,7 @@ func (rc *resolutionContext) addType(url string, fetcher TypeFetcher, enum bool)
 			rc.files[fileName] = fe
 		}
 		fe.types.addType(e.Name, e)
-		if e.Syntax == types.SYNTAX_PROTO3 {
+		if e.Syntax == types.Syntax_SYNTAX_PROTO3 {
 			fe.proto3 = true
 		}
 		return nil
@@ -477,13 +479,13 @@ func (rc *resolutionContext) addType(url string, fetcher TypeFetcher, enum bool)
 	var wg sync.WaitGroup
 	var failed int32
 	for _, f := range t.Fields {
-		if f.Kind == types.TYPE_GROUP || f.Kind == types.TYPE_MESSAGE || f.Kind == types.TYPE_ENUM {
+		if f.Kind == types.Field_TYPE_GROUP || f.Kind == types.Field_TYPE_MESSAGE || f.Kind == types.Field_TYPE_ENUM {
 			typeUrl := ensureScheme(f.TypeUrl)
 			kind := f.Kind
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				innerErr := rc.addType(typeUrl, fetcher, kind == types.TYPE_ENUM)
+				innerErr := rc.addType(typeUrl, fetcher, kind == types.Field_TYPE_ENUM)
 				// We want the "real" error to ultimately propagate to root, not
 				// one of the resulting cancellations (from any concurrent goroutines
 				// working in the same resolution context).
@@ -523,12 +525,12 @@ func (rc *resolutionContext) addType(url string, fetcher TypeFetcher, enum bool)
 		rc.files[fileName] = fe
 	}
 	fe.types.addType(t.Name, t)
-	if t.Syntax == types.SYNTAX_PROTO3 {
+	if t.Syntax == types.Syntax_SYNTAX_PROTO3 {
 		fe.proto3 = true
 	}
 
 	for _, f := range t.Fields {
-		if f.Kind == types.TYPE_GROUP || f.Kind == types.TYPE_MESSAGE || f.Kind == types.TYPE_ENUM {
+		if f.Kind == types.Field_TYPE_GROUP || f.Kind == types.Field_TYPE_MESSAGE || f.Kind == types.Field_TYPE_ENUM {
 			typeUrl := ensureScheme(f.TypeUrl)
 			if fe.deps == nil {
 				fe.deps = map[string]struct{}{}
@@ -864,58 +866,58 @@ func createFieldDescriptor(f *types.Field, mr *MessageRegistry) *descriptor.Fiel
 	}
 
 	var typeName string
-	if f.Kind == types.TYPE_GROUP || f.Kind == types.TYPE_MESSAGE || f.Kind == types.TYPE_ENUM {
+	if f.Kind == types.Field_TYPE_GROUP || f.Kind == types.Field_TYPE_MESSAGE || f.Kind == types.Field_TYPE_ENUM {
 		pos := strings.LastIndex(f.TypeUrl, "/")
 		typeName = "." + f.TypeUrl[pos+1:]
 	}
 
 	var label descriptor.FieldDescriptorProto_Label
 	switch f.Cardinality {
-	case types.CARDINALITY_OPTIONAL:
+	case types.Field_CARDINALITY_OPTIONAL:
 		label = descriptor.FieldDescriptorProto_LABEL_OPTIONAL
-	case types.CARDINALITY_REPEATED:
+	case types.Field_CARDINALITY_REPEATED:
 		label = descriptor.FieldDescriptorProto_LABEL_REPEATED
-	case types.CARDINALITY_REQUIRED:
+	case types.Field_CARDINALITY_REQUIRED:
 		label = descriptor.FieldDescriptorProto_LABEL_REQUIRED
 	}
 
 	var typ descriptor.FieldDescriptorProto_Type
 	switch f.Kind {
-	case types.TYPE_ENUM:
+	case types.Field_TYPE_ENUM:
 		typ = descriptor.FieldDescriptorProto_TYPE_ENUM
-	case types.TYPE_GROUP:
+	case types.Field_TYPE_GROUP:
 		typ = descriptor.FieldDescriptorProto_TYPE_GROUP
-	case types.TYPE_MESSAGE:
+	case types.Field_TYPE_MESSAGE:
 		typ = descriptor.FieldDescriptorProto_TYPE_MESSAGE
-	case types.TYPE_BYTES:
+	case types.Field_TYPE_BYTES:
 		typ = descriptor.FieldDescriptorProto_TYPE_BYTES
-	case types.TYPE_STRING:
+	case types.Field_TYPE_STRING:
 		typ = descriptor.FieldDescriptorProto_TYPE_STRING
-	case types.TYPE_BOOL:
+	case types.Field_TYPE_BOOL:
 		typ = descriptor.FieldDescriptorProto_TYPE_BOOL
-	case types.TYPE_DOUBLE:
+	case types.Field_TYPE_DOUBLE:
 		typ = descriptor.FieldDescriptorProto_TYPE_DOUBLE
-	case types.TYPE_FLOAT:
+	case types.Field_TYPE_FLOAT:
 		typ = descriptor.FieldDescriptorProto_TYPE_FLOAT
-	case types.TYPE_FIXED32:
+	case types.Field_TYPE_FIXED32:
 		typ = descriptor.FieldDescriptorProto_TYPE_FIXED32
-	case types.TYPE_FIXED64:
+	case types.Field_TYPE_FIXED64:
 		typ = descriptor.FieldDescriptorProto_TYPE_FIXED64
-	case types.TYPE_INT32:
+	case types.Field_TYPE_INT32:
 		typ = descriptor.FieldDescriptorProto_TYPE_INT32
-	case types.TYPE_INT64:
+	case types.Field_TYPE_INT64:
 		typ = descriptor.FieldDescriptorProto_TYPE_INT64
-	case types.TYPE_SFIXED32:
+	case types.Field_TYPE_SFIXED32:
 		typ = descriptor.FieldDescriptorProto_TYPE_SFIXED32
-	case types.TYPE_SFIXED64:
+	case types.Field_TYPE_SFIXED64:
 		typ = descriptor.FieldDescriptorProto_TYPE_SFIXED64
-	case types.TYPE_SINT32:
+	case types.Field_TYPE_SINT32:
 		typ = descriptor.FieldDescriptorProto_TYPE_SINT32
-	case types.TYPE_SINT64:
+	case types.Field_TYPE_SINT64:
 		typ = descriptor.FieldDescriptorProto_TYPE_SINT64
-	case types.TYPE_UINT32:
+	case types.Field_TYPE_UINT32:
 		typ = descriptor.FieldDescriptorProto_TYPE_UINT32
-	case types.TYPE_UINT64:
+	case types.Field_TYPE_UINT64:
 		typ = descriptor.FieldDescriptorProto_TYPE_UINT64
 	}
 

@@ -7,7 +7,8 @@ matrix:
     - go: "1.8"
     - go: "1.9"
     - go: "1.10"
-    - go: "tip"
+      env: VET=1
+    - go: tip
 
 # accomodate forks
 before_install:
@@ -15,7 +16,7 @@ before_install:
   - test ! -d $GOPATH/src/github.com/jhump/protoreflect && mv $TRAVIS_BUILD_DIR $GOPATH/src/github.com/jhump/protoreflect || true
 
 script:
-  - make ci
+  - if [[ "$VET" = 1 ]]; then make default testcover; else make deps test; fi
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash) -f coverage.out
+  - if [[ "$VET" = 1 ]]; then bash <(curl -s https://codecov.io/bash) -f coverage.out; fi
