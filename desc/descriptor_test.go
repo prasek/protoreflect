@@ -985,6 +985,8 @@ func TestLoadFileDescriptorForWellKnownProtos(t *testing.T) {
 		for _, typ := range types {
 			d := fd.FindSymbol(typ)
 			testutil.Require(t, d != nil)
+			d2 := fd.FindSymbol("." + typ)
+			testutil.Eq(t, d, d2)
 		}
 
 		// also try loading via alternate name
@@ -999,6 +1001,8 @@ func TestLoadFileDescriptorForWellKnownProtos(t *testing.T) {
 		for _, typ := range types {
 			d := fd.FindSymbol(typ)
 			testutil.Require(t, d != nil)
+			d2 := fd.FindSymbol("." + typ)
+			testutil.Eq(t, d, d2)
 		}
 	}
 }
