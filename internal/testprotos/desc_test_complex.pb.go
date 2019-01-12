@@ -1804,8 +1804,7 @@ func (c *testTestServiceClient) Get(ctx context.Context, in *Test, opts ...grpc.
 	return out, nil
 }
 
-// Server API for TestTestService service
-
+// TestTestServiceServer is the server API for TestTestService service.
 type TestTestServiceServer interface {
 	UserAuth(context.Context, *Test) (*Test, error)
 	Get(context.Context, *Test) (*Test, error)

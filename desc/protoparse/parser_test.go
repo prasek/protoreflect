@@ -1,6 +1,7 @@
 package protoparse
 
 import (
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -126,6 +127,15 @@ func TestSimpleParse(t *testing.T) {
 		"pkg/desc_test_pkg.proto",
 	}
 	testutil.Eq(t, expected, actual)
+}
+
+func parseProtoFile(filename string) (*parseResult, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return parseProto(filename, f, true)
 }
 
 func hasExtension(fd *dpb.FileDescriptorProto, name string) bool {
@@ -373,7 +383,7 @@ func TestBasicValidation(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		_, err := parseProto("test.proto", strings.NewReader(tc.contents))
+		_, err := parseProto("test.proto", strings.NewReader(tc.contents), true)
 		if tc.succeeds {
 			testutil.Ok(t, err, "case #%d should succeed", i)
 		} else {
@@ -393,4 +403,25 @@ func TestAggregateValueInUninterpretedOptions(t *testing.T) {
 
 	aggregateValue2 := *fd.Service[0].Method[1].Options.UninterpretedOption[0].AggregateValue
 	testutil.Eq(t, "{ authenticated: true permission{ action: READ entity: \"user\" } }", aggregateValue2)
+}
+
+func TestParseFilesMessageComments(t *testing.T) {
+	p := Parser{
+		IncludeSourceCodeInfo: true,
+	}
+	protos, err := p.ParseFiles("../../internal/testprotos/desc_test1.proto")
+	testutil.Ok(t, err)
+	comments := ""
+	expected := " Comment for TestMessage"
+	for _, p := range protos {
+		msg := p.FindMessage("testprotos.TestMessage")
+		if msg != nil {
+			si := msg.GetSourceInfo()
+			if si != nil {
+				comments = si.GetLeadingComments()
+			}
+			break
+		}
+	}
+	testutil.Eq(t, expected, comments)
 }

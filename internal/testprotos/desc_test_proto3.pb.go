@@ -305,8 +305,7 @@ func (x *testServiceDoSomethingForeverClient) Recv() (*TestResponse, error) {
 	return m, nil
 }
 
-// Server API for TestService service
-
+// TestServiceServer is the server API for TestService service.
 type TestServiceServer interface {
 	DoSomething(context.Context, *TestRequest) (*pkg.Bar, error)
 	DoSomethingElse(TestService_DoSomethingElseServer) error
