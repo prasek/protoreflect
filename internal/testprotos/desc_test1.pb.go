@@ -54,7 +54,7 @@ func (x *TestMessage_NestedEnum) UnmarshalJSON(data []byte) error {
 	return nil
 }
 func (TestMessage_NestedEnum) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_desc_test1_976c7515ea918599, []int{0, 0}
+	return fileDescriptor_desc_test1_5bae6e01264d1a98, []int{0, 0}
 }
 
 // Comment for DeeplyNestedEnum
@@ -93,7 +93,7 @@ func (x *TestMessage_NestedMessage_AnotherNestedMessage_YetAnotherNestedMessage_
 	return nil
 }
 func (TestMessage_NestedMessage_AnotherNestedMessage_YetAnotherNestedMessage_DeeplyNestedEnum) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_desc_test1_976c7515ea918599, []int{0, 0, 0, 0, 0}
+	return fileDescriptor_desc_test1_5bae6e01264d1a98, []int{0, 0, 0, 0, 0}
 }
 
 // Comment for TestMessage
@@ -115,7 +115,7 @@ func (m *TestMessage) Reset()         { *m = TestMessage{} }
 func (m *TestMessage) String() string { return proto.CompactTextString(m) }
 func (*TestMessage) ProtoMessage()    {}
 func (*TestMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_desc_test1_976c7515ea918599, []int{0}
+	return fileDescriptor_desc_test1_5bae6e01264d1a98, []int{0}
 }
 func (m *TestMessage) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TestMessage.Unmarshal(m, b)
@@ -178,7 +178,7 @@ func (m *TestMessage_NestedMessage) Reset()         { *m = TestMessage_NestedMes
 func (m *TestMessage_NestedMessage) String() string { return proto.CompactTextString(m) }
 func (*TestMessage_NestedMessage) ProtoMessage()    {}
 func (*TestMessage_NestedMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_desc_test1_976c7515ea918599, []int{0, 0}
+	return fileDescriptor_desc_test1_5bae6e01264d1a98, []int{0, 0}
 }
 func (m *TestMessage_NestedMessage) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TestMessage_NestedMessage.Unmarshal(m, b)
@@ -229,7 +229,7 @@ func (m *TestMessage_NestedMessage_AnotherNestedMessage) String() string {
 }
 func (*TestMessage_NestedMessage_AnotherNestedMessage) ProtoMessage() {}
 func (*TestMessage_NestedMessage_AnotherNestedMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_desc_test1_976c7515ea918599, []int{0, 0, 0}
+	return fileDescriptor_desc_test1_5bae6e01264d1a98, []int{0, 0, 0}
 }
 func (m *TestMessage_NestedMessage_AnotherNestedMessage) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TestMessage_NestedMessage_AnotherNestedMessage.Unmarshal(m, b)
@@ -294,7 +294,7 @@ func (m *TestMessage_NestedMessage_AnotherNestedMessage_YetAnotherNestedMessage)
 }
 func (*TestMessage_NestedMessage_AnotherNestedMessage_YetAnotherNestedMessage) ProtoMessage() {}
 func (*TestMessage_NestedMessage_AnotherNestedMessage_YetAnotherNestedMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_desc_test1_976c7515ea918599, []int{0, 0, 0, 0}
+	return fileDescriptor_desc_test1_5bae6e01264d1a98, []int{0, 0, 0, 0}
 }
 func (m *TestMessage_NestedMessage_AnotherNestedMessage_YetAnotherNestedMessage) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TestMessage_NestedMessage_AnotherNestedMessage_YetAnotherNestedMessage.Unmarshal(m, b)
@@ -392,7 +392,7 @@ func (m *AnotherTestMessage) Reset()         { *m = AnotherTestMessage{} }
 func (m *AnotherTestMessage) String() string { return proto.CompactTextString(m) }
 func (*AnotherTestMessage) ProtoMessage()    {}
 func (*AnotherTestMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_desc_test1_976c7515ea918599, []int{1}
+	return fileDescriptor_desc_test1_5bae6e01264d1a98, []int{1}
 }
 
 var extRange_AnotherTestMessage = []proto.ExtensionRange{
@@ -579,7 +579,7 @@ func (m *AnotherTestMessage_RockNRoll) Reset()         { *m = AnotherTestMessage
 func (m *AnotherTestMessage_RockNRoll) String() string { return proto.CompactTextString(m) }
 func (*AnotherTestMessage_RockNRoll) ProtoMessage()    {}
 func (*AnotherTestMessage_RockNRoll) Descriptor() ([]byte, []int) {
-	return fileDescriptor_desc_test1_976c7515ea918599, []int{1, 4}
+	return fileDescriptor_desc_test1_5bae6e01264d1a98, []int{1, 4}
 }
 func (m *AnotherTestMessage_RockNRoll) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnotherTestMessage_RockNRoll.Unmarshal(m, b)
@@ -676,9 +676,9 @@ func init() {
 	proto.RegisterExtension(E_Xui)
 }
 
-func init() { proto.RegisterFile("desc_test1.proto", fileDescriptor_desc_test1_976c7515ea918599) }
+func init() { proto.RegisterFile("desc_test1.proto", fileDescriptor_desc_test1_5bae6e01264d1a98) }
 
-var fileDescriptor_desc_test1_976c7515ea918599 = []byte{
+var fileDescriptor_desc_test1_5bae6e01264d1a98 = []byte{
 	// 696 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x94, 0xcd, 0x6a, 0xdb, 0x4a,
 	0x14, 0xc7, 0xaf, 0x46, 0x96, 0x6d, 0x9d, 0xdc, 0x04, 0x31, 0x84, 0x1b, 0x91, 0xc5, 0xc5, 0x98,

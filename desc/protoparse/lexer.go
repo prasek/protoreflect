@@ -225,11 +225,15 @@ func (l *protoLex) Lex(lval *protoSymType) int {
 		l.prevSym = n
 	}
 	setString := func(val string) {
-		lval.str = &stringLiteralNode{basicNode: basic(), val: val}
+		b := basic()
+		lval.str = &stringLiteralNode{val: val}
+		lval.str.setRange(&b, &b)
 		setPrev(lval.str)
 	}
 	setIdent := func(val string, kind identKind) {
-		lval.id = &identNode{basicNode: basic(), val: val, kind: kind}
+		b := basic()
+		lval.id = &identNode{val: val, kind: kind}
+		lval.id.setRange(&b, &b)
 		setPrev(lval.id)
 	}
 	setInt := func(val uint64) {
