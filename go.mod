@@ -1,16 +1,18 @@
 module github.com/jhump/protoreflect
 
-require (
-	github.com/gogo/protobuf v1.1.2-0.20180925083612-61dbc136cf5d
-	github.com/golang/protobuf v1.2.0
-	golang.org/x/net v0.0.0-20180926154720-4dfa2610cdf3
-	golang.org/x/tools v0.0.0-20180928181343-b3c0be4c978b // indirect
-	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8
-	google.golang.org/grpc v1.15.0
+go 1.13
 
-//	github.com/golang/protobuf v1.3.1
-//	golang.org/x/net v0.0.0-20180530234432-1e491301e022
-//	golang.org/x/text v0.3.0 // indirect
-//	google.golang.org/genproto v0.0.0-20170818100345-ee236bd376b0
-//	google.golang.org/grpc v1.8.0
+require (
+	github.com/gogo/protobuf v1.3.1
+
+	//	github.com/golang/protobuf v1.4.2
+
+	github.com/gordonklaus/ineffassign v0.0.0-20200309095847-7953dde2c7bf // indirect
+	github.com/nishanths/predeclared v0.0.0-20200524104333-86fad755b4d3 // indirect
+	golang.org/x/net v0.0.0-20200625001655-4c5254603344
+	golang.org/x/tools v0.0.0-20200717024301-6ddee64345a6 // indirect
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
+	google.golang.org/grpc v1.27.0
+	google.golang.org/protobuf v1.25.1-0.20200805231151-a709e31e5d12
+	honnef.co/go/tools v0.0.1-2020.1.4 // indirect
 )

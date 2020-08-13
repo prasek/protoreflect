@@ -286,6 +286,14 @@ func TestFileDescriptorObjectGraph(t *testing.T) {
 									"one of":       {(*FieldDescriptor).GetOneOf, refs("testprotos.AnotherTestMessage.atmoo")},
 								},
 							},
+							{
+								name: "testprotos.AnotherTestMessage.withoptions",
+								references: map[string]childCases{
+									"message type": {(*FieldDescriptor).GetMessageType, refs("testprotos.AnotherTestMessage.WithOptions")},
+									"enum type":    {(*FieldDescriptor).GetEnumType, nil},
+									"one of":       {(*FieldDescriptor).GetOneOf, nil},
+								},
+							},
 						}},
 						"one ofs": {(*MessageDescriptor).GetOneOfs, []descCase{
 							{
@@ -437,6 +445,16 @@ func TestFileDescriptorObjectGraph(t *testing.T) {
 											},
 										},
 									}},
+									"nested messages":   {(*MessageDescriptor).GetNestedMessageTypes, nil},
+									"nested enums":      {(*MessageDescriptor).GetNestedEnumTypes, nil},
+									"nested extensions": {(*MessageDescriptor).GetNestedExtensions, nil},
+									"one ofs":           {(*MessageDescriptor).GetOneOfs, nil},
+								},
+							},
+							{
+								name: "testprotos.AnotherTestMessage.WithOptions",
+								references: map[string]childCases{
+									"fields":            {(*MessageDescriptor).GetFields, nil},
 									"nested messages":   {(*MessageDescriptor).GetNestedMessageTypes, nil},
 									"nested enums":      {(*MessageDescriptor).GetNestedEnumTypes, nil},
 									"nested extensions": {(*MessageDescriptor).GetNestedExtensions, nil},
@@ -984,7 +1002,7 @@ func TestLoadFileDescriptorForWellKnownProtos(t *testing.T) {
 		testutil.Eq(t, file, fd.GetName())
 		for _, typ := range types {
 			d := fd.FindSymbol(typ)
-			testutil.Require(t, d != nil)
+			testutil.Require(t, d != nil, "file %q does not have type %s", file, typ)
 			d2 := fd.FindSymbol("." + typ)
 			testutil.Eq(t, d, d2)
 		}
@@ -1000,7 +1018,7 @@ func TestLoadFileDescriptorForWellKnownProtos(t *testing.T) {
 		testutil.Eq(t, file, fd.GetName())
 		for _, typ := range types {
 			d := fd.FindSymbol(typ)
-			testutil.Require(t, d != nil)
+			testutil.Require(t, d != nil, "file %q does not have type %s", file, typ)
 			d2 := fd.FindSymbol("." + typ)
 			testutil.Eq(t, d, d2)
 		}
@@ -1177,5 +1195,49 @@ func TestToFileDescriptorSet(t *testing.T) {
 		expectedFile, err := LoadFileDescriptor(f.GetName())
 		testutil.Ok(t, err, "failed to load descriptor for %q", f.GetName())
 		testutil.Eq(t, expectedFile.AsFileDescriptorProto(), f)
+	}
+}
+
+func TestJsonCamelCase(t *testing.T) {
+	testCases := map[string]string{
+		// NB: these simple test cases come from protoc's descriptor_unittest.cc:
+		"field_name1":  "fieldName1",
+		"fieldName2":   "fieldName2",
+		"FieldName3":   "FieldName3",
+		"_field_name4": "FieldName4",
+		"FIELD_NAME5":  "FIELDNAME5",
+
+		// NB: these are more interesting examples; all keys were all run through
+		// protoc and the values below are the json_name values computed by protoc
+		// (to make sure we correctly mirror protoc behavior)
+		"abc":       "abc",
+		"__def":     "Def",
+		"a_b_":      "aB",
+		"d_e":       "dE",
+		"abc_def":   "abcDef",
+		"c_d_e":     "cDE",
+		"_a_b_c_d":  "ABCD",
+		"a_b_c_d_e": "aBCDE",
+		"abc1":      "abc1",
+		"__2def":    "2def",
+		"a_b_3":     "aB3",
+		"d_e4_":     "dE4",
+		"abc4_5def": "abc45def",
+	}
+	for k, v := range testCases {
+		testutil.Eq(t, v, jsonCamelCase(k))
+	}
+}
+
+func TestProto3Optional(t *testing.T) {
+	fd, err := loadProtoset("../internal/testprotos/proto3_optional/desc_test_proto3_optional.protoset")
+	testutil.Ok(t, err)
+	md := fd.FindSymbol("MessageWithOptionalFields").(*MessageDescriptor)
+	testutil.Eq(t, 2, len(md.GetOneOfs()))
+	testutil.Eq(t, 2, len(md.GetFields()))
+	for i, fld := range md.GetFields() {
+		testutil.Require(t, fld.IsProto3Optional())
+		testutil.Eq(t, fld.GetOneOf(), md.GetOneOfs()[i])
+		testutil.Require(t, md.GetOneOfs()[i].IsSynthetic())
 	}
 }

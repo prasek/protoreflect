@@ -8,13 +8,18 @@ import "desc_test_options.proto";
 
 import "google/protobuf/empty.proto";
 
+// option comments FTW!!!
 option go_package = "github.com/jhump/protoreflect/internal/testprotos";
+
+message AnEmptyMessage {
+}
 
 // We need a request for our RPC service below.
 message Request {
-   option deprecated = true;
+   option deprecated = true; // deprecated!
 
-   option (testprotos.mfubar) = true;
+   // lead mfubar
+   option (testprotos.mfubar) = true; // trailing mfubar
 
    // A field comment
    repeated int32 ids = 1 [json_name = "|foo|", packed = true, (testprotos.ffubar) = "abc", (testprotos.ffubarb) = "xyz"]; // field trailer #1...
@@ -26,6 +31,7 @@ message Request {
    optional group Extras = 3 {
       option no_standard_descriptor_accessor = false;
 
+      // this is a custom option
       option (testprotos.mfubar) = false;
 
       optional double dbl = 1;
@@ -36,7 +42,25 @@ message Request {
       optional string str = 3; // Trailing comment...
    }
 
+   // can be this or that
+   oneof abc {
+      string this = 4;
+
+      int32 that = 5;
+   }
+
+   // can be these or those
+   oneof xyz {
+      string these = 6;
+
+      int32 those = 7;
+   }
+
+   // map field
+   map<string, string> things = 8;
+
    enum MarioCharacters {
+      // allow_alias comments!
       option allow_alias = true;
 
       option (testprotos.efubar) = 123;
@@ -77,9 +101,10 @@ message Request {
 
 // Service comment
 service RpcService {
-   option deprecated = false;
+   option deprecated = false; // DEPRECATED!
 
-   option (testprotos.sfubar) = { id:100 name:"bob" };
+   // option that sets field
+   option (testprotos.sfubar) = { id:100 name:"bob"  };
 
    option (testprotos.sfubare) = VALUE;
 

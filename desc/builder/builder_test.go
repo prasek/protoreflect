@@ -311,6 +311,26 @@ func TestCreatingMapField(t *testing.T) {
 	testutil.Eq(t, nmd, md.FindFieldByName("fooBarBaz").GetMessageType())
 }
 
+func TestProto3Optional(t *testing.T) {
+	mb := NewMessage("Foo")
+	flb := NewField("bar", FieldTypeBool()).SetProto3Optional(true)
+	mb.AddField(flb)
+
+	_, err := flb.Build()
+	testutil.Nok(t, err) // file does not have proto3 syntax
+
+	fb := NewFile("foo.proto").SetProto3(true)
+	fb.AddMessage(mb)
+
+	fld, err := flb.Build()
+	testutil.Ok(t, err)
+
+	testutil.Require(t, fld.IsProto3Optional())
+	testutil.Require(t, fld.GetOneOf() != nil)
+	testutil.Require(t, fld.GetOneOf().IsSynthetic())
+	testutil.Eq(t, "_bar", fld.GetOneOf().GetName())
+}
+
 func TestBuildersFromDescriptors(t *testing.T) {
 	for _, s := range []string{"desc_test1.proto", "desc_test2.proto", "desc_test_defaults.proto", "desc_test_options.proto", "desc_test_proto3.proto", "desc_test_wellknowntypes.proto", "nopkg/desc_test_nopkg.proto", "nopkg/desc_test_nopkg_new.proto", "pkg/desc_test_pkg.proto"} {
 		fd, err := desc.LoadFileDescriptor(s)
@@ -492,17 +512,18 @@ func roundTripFile(t *testing.T, fd *desc.FileDescriptor) {
 	// former will be updated to instead depend on the latter (since it is
 	// the actual file that declares used elements).
 	fdp := fd.AsFileDescriptorProto()
-	for i, dep := range fdp.Dependency {
+	needsNopkgNew := false
+	hasNoPkgNew := false
+	for _, dep := range fdp.Dependency {
 		if dep == "nopkg/desc_test_nopkg.proto" {
-			fdp.Dependency[i] = "nopkg/desc_test_nopkg_new.proto"
+			needsNopkgNew = true
 		}
-		if dep == "nopkg/desc_test_nopkg_new.proto" && fdp.GetName() == "nopkg/desc_test_nopkg.proto" {
-			// The file nopkg/desc_test_nopkg.proto actually declares nothing
-			// and *only* has the public import. So the round-tripped version
-			// will have no imports (it declares nothing so it depends on
-			// nothing).
-			fdp.Dependency = append(fdp.Dependency[:i], fdp.Dependency[i+1:]...)
+		if dep == "nopkg/desc_test_nopkg_new.proto" {
+			hasNoPkgNew = false
 		}
+	}
+	if needsNopkgNew && !hasNoPkgNew {
+		fdp.Dependency = append(fdp.Dependency, "nopkg/desc_test_nopkg_new.proto")
 	}
 
 	// Strip any public and weak imports. (The step above should have "fixed"
@@ -633,9 +654,9 @@ func TestAddRemoveMoveBuilders(t *testing.T) {
 	testutil.Eq(t, msg1.GetField("bar"), fld2)
 
 	// add fails due to name collisions
-	fld1 = NewField("foo", FieldTypeInt32())
-	err := oo1.TryAddChoice(fld1)
-	checkFailedAdd(t, err, oo1, fld1, "already contains field")
+	fld1dup := NewField("foo", FieldTypeInt32())
+	err := oo1.TryAddChoice(fld1dup)
+	checkFailedAdd(t, err, oo1, fld1dup, "already contains field")
 	fld2 = NewField("bar", FieldTypeInt32())
 	err = msg1.TryAddField(fld2)
 	checkFailedAdd(t, err, msg1, fld2, "already contains element")
@@ -650,7 +671,7 @@ func TestAddRemoveMoveBuilders(t *testing.T) {
 	checkChildren(t, msg1, oo1, oo2, msg2)
 	testutil.Eq(t, msg1.GetNestedMessage("baz"), msg2)
 
-	// can't add extension, group, or map fields to one-of
+	// can't add extension or map fields to one-of
 	ext1 := NewExtension("abc", 123, FieldTypeInt32(), msg1)
 	err = oo1.TryAddChoice(ext1)
 	checkFailedAdd(t, err, oo1, ext1, "is an extension, not a regular field")
@@ -658,11 +679,12 @@ func TestAddRemoveMoveBuilders(t *testing.T) {
 	checkFailedAdd(t, err, msg1, ext1, "is an extension, not a regular field")
 	mapField := NewMapField("abc", FieldTypeInt32(), FieldTypeString())
 	err = oo1.TryAddChoice(mapField)
-	checkFailedAdd(t, err, oo1, mapField, "cannot add a group or map field")
+	checkFailedAdd(t, err, oo1, mapField, "cannot add a map field")
+	// can add group field though
 	groupMsg := NewMessage("Group")
 	groupField := NewGroupField(groupMsg)
-	err = oo1.TryAddChoice(groupField)
-	checkFailedAdd(t, err, oo1, groupField, "cannot add a group or map field")
+	oo1.AddChoice(groupField)
+	checkChildren(t, oo1, fld1, groupField)
 	// adding map and group to msg succeeds
 	msg1.AddField(groupField)
 	msg1.AddField(mapField)
@@ -774,26 +796,410 @@ func TestRenumberingFields(t *testing.T) {
 	// TODO
 }
 
-func TestUseOfExtensionRegistry(t *testing.T) {
-	fileOptionsDesc, err := desc.LoadMessageDescriptorForMessage((*dpb.FileOptions)(nil))
+var (
+	fileOptionsDesc, msgOptionsDesc, fieldOptionsDesc, oneofOptionsDesc, extRangeOptionsDesc,
+	enumOptionsDesc, enumValOptionsDesc, svcOptionsDesc, mtdOptionsDesc *desc.MessageDescriptor
+)
+
+func init() {
+	var err error
+	fileOptionsDesc, err = desc.LoadMessageDescriptorForMessage((*dpb.FileOptions)(nil))
+	if err != nil {
+		panic(err)
+	}
+	msgOptionsDesc, err = desc.LoadMessageDescriptorForMessage((*dpb.MessageOptions)(nil))
+	if err != nil {
+		panic(err)
+	}
+	fieldOptionsDesc, err = desc.LoadMessageDescriptorForMessage((*dpb.FieldOptions)(nil))
+	if err != nil {
+		panic(err)
+	}
+	oneofOptionsDesc, err = desc.LoadMessageDescriptorForMessage((*dpb.OneofOptions)(nil))
+	if err != nil {
+		panic(err)
+	}
+	extRangeOptionsDesc, err = desc.LoadMessageDescriptorForMessage((*dpb.ExtensionRangeOptions)(nil))
+	if err != nil {
+		panic(err)
+	}
+	enumOptionsDesc, err = desc.LoadMessageDescriptorForMessage((*dpb.EnumOptions)(nil))
+	if err != nil {
+		panic(err)
+	}
+	enumValOptionsDesc, err = desc.LoadMessageDescriptorForMessage((*dpb.EnumValueOptions)(nil))
+	if err != nil {
+		panic(err)
+	}
+	svcOptionsDesc, err = desc.LoadMessageDescriptorForMessage((*dpb.ServiceOptions)(nil))
+	if err != nil {
+		panic(err)
+	}
+	mtdOptionsDesc, err = desc.LoadMessageDescriptorForMessage((*dpb.MethodOptions)(nil))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TestCustomOptionsDiscoveredInSameFile(t *testing.T) {
+	// Add option for every type to file
+	file := NewFile("foo.proto")
+
+	fileOpt := NewExtensionImported("file_foo", 54321, FieldTypeString(), fileOptionsDesc)
+	file.AddExtension(fileOpt)
+
+	msgOpt := NewExtensionImported("msg_foo", 54321, FieldTypeString(), msgOptionsDesc)
+	file.AddExtension(msgOpt)
+
+	fieldOpt := NewExtensionImported("field_foo", 54321, FieldTypeString(), fieldOptionsDesc)
+	file.AddExtension(fieldOpt)
+
+	oneofOpt := NewExtensionImported("oneof_foo", 54321, FieldTypeString(), oneofOptionsDesc)
+	file.AddExtension(oneofOpt)
+
+	extRangeOpt := NewExtensionImported("ext_range_foo", 54321, FieldTypeString(), extRangeOptionsDesc)
+	file.AddExtension(extRangeOpt)
+
+	enumOpt := NewExtensionImported("enum_foo", 54321, FieldTypeString(), enumOptionsDesc)
+	file.AddExtension(enumOpt)
+
+	enumValOpt := NewExtensionImported("enum_val_foo", 54321, FieldTypeString(), enumValOptionsDesc)
+	file.AddExtension(enumValOpt)
+
+	svcOpt := NewExtensionImported("svc_foo", 54321, FieldTypeString(), svcOptionsDesc)
+	file.AddExtension(svcOpt)
+
+	mtdOpt := NewExtensionImported("mtd_foo", 54321, FieldTypeString(), mtdOptionsDesc)
+	file.AddExtension(mtdOpt)
+
+	// Now we can test referring to these and making sure they show up correctly
+	// in built descriptors
+
+	t.Run("file options", func(t *testing.T) {
+		fb := clone(t, file)
+		fb.Options = &dpb.FileOptions{}
+		ext, err := fileOpt.Build()
+		testutil.Ok(t, err)
+		err = dynamic.SetExtension(fb.Options, ext, "fubar")
+		testutil.Ok(t, err)
+		checkBuildWithLocalExtensions(t, fb)
+	})
+
+	t.Run("message options", func(t *testing.T) {
+		mb := NewMessage("Foo")
+		mb.Options = &dpb.MessageOptions{}
+		ext, err := msgOpt.Build()
+		testutil.Ok(t, err)
+		err = dynamic.SetExtension(mb.Options, ext, "fubar")
+		testutil.Ok(t, err)
+
+		fb := clone(t, file)
+		fb.AddMessage(mb)
+		checkBuildWithLocalExtensions(t, mb)
+	})
+
+	t.Run("field options", func(t *testing.T) {
+		flb := NewField("foo", FieldTypeString())
+		flb.Options = &dpb.FieldOptions{}
+		// fields must be connected to a message
+		mb := NewMessage("Foo").AddField(flb)
+		ext, err := fieldOpt.Build()
+		testutil.Ok(t, err)
+		err = dynamic.SetExtension(flb.Options, ext, "fubar")
+		testutil.Ok(t, err)
+
+		fb := clone(t, file)
+		fb.AddMessage(mb)
+		checkBuildWithLocalExtensions(t, flb)
+	})
+
+	t.Run("oneof options", func(t *testing.T) {
+		oob := NewOneOf("oo")
+		oob.Options = &dpb.OneofOptions{}
+		// oneofs must be connected to a message
+		mb := NewMessage("Foo").AddOneOf(oob)
+		ext, err := oneofOpt.Build()
+		testutil.Ok(t, err)
+		err = dynamic.SetExtension(oob.Options, ext, "fubar")
+		testutil.Ok(t, err)
+
+		fb := clone(t, file)
+		fb.AddMessage(mb)
+		checkBuildWithLocalExtensions(t, oob)
+	})
+
+	t.Run("extension range options", func(t *testing.T) {
+		var erOpts dpb.ExtensionRangeOptions
+		ext, err := extRangeOpt.Build()
+		testutil.Ok(t, err)
+		err = dynamic.SetExtension(&erOpts, ext, "fubar")
+		testutil.Ok(t, err)
+		mb := NewMessage("foo").AddExtensionRangeWithOptions(100, 200, &erOpts)
+
+		fb := clone(t, file)
+		fb.AddMessage(mb)
+		checkBuildWithLocalExtensions(t, mb)
+	})
+
+	t.Run("enum options", func(t *testing.T) {
+		eb := NewEnum("Foo")
+		eb.Options = &dpb.EnumOptions{}
+		ext, err := enumOpt.Build()
+		testutil.Ok(t, err)
+		err = dynamic.SetExtension(eb.Options, ext, "fubar")
+		testutil.Ok(t, err)
+
+		fb := clone(t, file)
+		fb.AddEnum(eb)
+		checkBuildWithLocalExtensions(t, eb)
+	})
+
+	t.Run("enum val options", func(t *testing.T) {
+		evb := NewEnumValue("FOO")
+		// enum values must be connected to an enum
+		eb := NewEnum("Foo").AddValue(evb)
+		evb.Options = &dpb.EnumValueOptions{}
+		ext, err := enumValOpt.Build()
+		testutil.Ok(t, err)
+		err = dynamic.SetExtension(evb.Options, ext, "fubar")
+		testutil.Ok(t, err)
+
+		fb := clone(t, file)
+		fb.AddEnum(eb)
+		checkBuildWithLocalExtensions(t, evb)
+	})
+
+	t.Run("service options", func(t *testing.T) {
+		sb := NewService("Foo")
+		sb.Options = &dpb.ServiceOptions{}
+		ext, err := svcOpt.Build()
+		testutil.Ok(t, err)
+		err = dynamic.SetExtension(sb.Options, ext, "fubar")
+		testutil.Ok(t, err)
+
+		fb := clone(t, file)
+		fb.AddService(sb)
+		checkBuildWithLocalExtensions(t, sb)
+	})
+
+	t.Run("method options", func(t *testing.T) {
+		req := NewMessage("Request")
+		resp := NewMessage("Response")
+		mtb := NewMethod("Foo",
+			RpcTypeMessage(req, false),
+			RpcTypeMessage(resp, false))
+		// methods must be connected to a service
+		sb := NewService("Bar").AddMethod(mtb)
+		mtb.Options = &dpb.MethodOptions{}
+		ext, err := mtdOpt.Build()
+		testutil.Ok(t, err)
+		err = dynamic.SetExtension(mtb.Options, ext, "fubar")
+		testutil.Ok(t, err)
+
+		fb := clone(t, file)
+		fb.AddService(sb).AddMessage(req).AddMessage(resp)
+		checkBuildWithLocalExtensions(t, mtb)
+	})
+}
+
+func checkBuildWithLocalExtensions(t *testing.T, builder Builder) {
+	// requiring options and succeeding (since they are defined locally)
+	var opts BuilderOptions
+	opts.RequireInterpretedOptions = true
+	d, err := opts.Build(builder)
 	testutil.Ok(t, err)
-	msgOptionsDesc, err := desc.LoadMessageDescriptorForMessage((*dpb.MessageOptions)(nil))
-	testutil.Ok(t, err)
-	fieldOptionsDesc, err := desc.LoadMessageDescriptorForMessage((*dpb.FieldOptions)(nil))
-	testutil.Ok(t, err)
-	oneofOptionsDesc, err := desc.LoadMessageDescriptorForMessage((*dpb.OneofOptions)(nil))
-	testutil.Ok(t, err)
-	extRangeOptionsDesc, err := desc.LoadMessageDescriptorForMessage((*dpb.ExtensionRangeOptions)(nil))
-	testutil.Ok(t, err)
-	enumOptionsDesc, err := desc.LoadMessageDescriptorForMessage((*dpb.EnumOptions)(nil))
-	testutil.Ok(t, err)
-	enumValOptionsDesc, err := desc.LoadMessageDescriptorForMessage((*dpb.EnumValueOptions)(nil))
-	testutil.Ok(t, err)
-	svcOptionsDesc, err := desc.LoadMessageDescriptorForMessage((*dpb.ServiceOptions)(nil))
-	testutil.Ok(t, err)
-	mtdOptionsDesc, err := desc.LoadMessageDescriptorForMessage((*dpb.MethodOptions)(nil))
+	// since they are defined locally, no extra imports
+	//testutil.Eq(t, []string{"google/protobuf/descriptor.proto"}, d.GetFile().AsFileDescriptorProto().GetDependency())
+	testutil.Eq(t, []string{"descriptor.proto"}, d.GetFile().AsFileDescriptorProto().GetDependency())
+}
+
+func TestCustomOptionsDiscoveredInDependencies(t *testing.T) {
+	// Add option for every type to file
+	file := NewFile("options.proto")
+
+	fileOpt := NewExtensionImported("file_foo", 54321, FieldTypeString(), fileOptionsDesc)
+	file.AddExtension(fileOpt)
+
+	msgOpt := NewExtensionImported("msg_foo", 54321, FieldTypeString(), msgOptionsDesc)
+	file.AddExtension(msgOpt)
+
+	fieldOpt := NewExtensionImported("field_foo", 54321, FieldTypeString(), fieldOptionsDesc)
+	file.AddExtension(fieldOpt)
+
+	oneofOpt := NewExtensionImported("oneof_foo", 54321, FieldTypeString(), oneofOptionsDesc)
+	file.AddExtension(oneofOpt)
+
+	extRangeOpt := NewExtensionImported("ext_range_foo", 54321, FieldTypeString(), extRangeOptionsDesc)
+	file.AddExtension(extRangeOpt)
+
+	enumOpt := NewExtensionImported("enum_foo", 54321, FieldTypeString(), enumOptionsDesc)
+	file.AddExtension(enumOpt)
+
+	enumValOpt := NewExtensionImported("enum_val_foo", 54321, FieldTypeString(), enumValOptionsDesc)
+	file.AddExtension(enumValOpt)
+
+	svcOpt := NewExtensionImported("svc_foo", 54321, FieldTypeString(), svcOptionsDesc)
+	file.AddExtension(svcOpt)
+
+	mtdOpt := NewExtensionImported("mtd_foo", 54321, FieldTypeString(), mtdOptionsDesc)
+	file.AddExtension(mtdOpt)
+
+	fileDesc, err := file.Build()
 	testutil.Ok(t, err)
 
+	// Now we can test referring to these and making sure they show up correctly
+	// in built descriptors
+	for name, useBuilder := range map[string]bool{"descriptor": false, "builder": true} {
+		newFile := func() *FileBuilder {
+			fb := NewFile("foo.proto")
+			if useBuilder {
+				fb.AddDependency(file)
+			} else {
+				fb.AddImportedDependency(fileDesc)
+			}
+			return fb
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Run("file options", func(t *testing.T) {
+				fb := newFile()
+				fb.Options = &dpb.FileOptions{}
+				ext, err := fileOpt.Build()
+				testutil.Ok(t, err)
+				err = dynamic.SetExtension(fb.Options, ext, "fubar")
+				testutil.Ok(t, err)
+				checkBuildWithImportedExtensions(t, fb)
+			})
+
+			t.Run("message options", func(t *testing.T) {
+				mb := NewMessage("Foo")
+				mb.Options = &dpb.MessageOptions{}
+				ext, err := msgOpt.Build()
+				testutil.Ok(t, err)
+				err = dynamic.SetExtension(mb.Options, ext, "fubar")
+				testutil.Ok(t, err)
+
+				fb := newFile()
+				fb.AddMessage(mb)
+				checkBuildWithImportedExtensions(t, mb)
+			})
+
+			t.Run("field options", func(t *testing.T) {
+				flb := NewField("foo", FieldTypeString())
+				flb.Options = &dpb.FieldOptions{}
+				// fields must be connected to a message
+				mb := NewMessage("Foo").AddField(flb)
+				ext, err := fieldOpt.Build()
+				testutil.Ok(t, err)
+				err = dynamic.SetExtension(flb.Options, ext, "fubar")
+				testutil.Ok(t, err)
+
+				fb := newFile()
+				fb.AddMessage(mb)
+				checkBuildWithImportedExtensions(t, flb)
+			})
+
+			t.Run("oneof options", func(t *testing.T) {
+				oob := NewOneOf("oo")
+				oob.Options = &dpb.OneofOptions{}
+				// oneofs must be connected to a message
+				mb := NewMessage("Foo").AddOneOf(oob)
+				ext, err := oneofOpt.Build()
+				testutil.Ok(t, err)
+				err = dynamic.SetExtension(oob.Options, ext, "fubar")
+				testutil.Ok(t, err)
+
+				fb := newFile()
+				fb.AddMessage(mb)
+				checkBuildWithImportedExtensions(t, oob)
+			})
+
+			t.Run("extension range options", func(t *testing.T) {
+				var erOpts dpb.ExtensionRangeOptions
+				ext, err := extRangeOpt.Build()
+				testutil.Ok(t, err)
+				err = dynamic.SetExtension(&erOpts, ext, "fubar")
+				testutil.Ok(t, err)
+				mb := NewMessage("foo").AddExtensionRangeWithOptions(100, 200, &erOpts)
+
+				fb := newFile()
+				fb.AddMessage(mb)
+				checkBuildWithImportedExtensions(t, mb)
+			})
+
+			t.Run("enum options", func(t *testing.T) {
+				eb := NewEnum("Foo")
+				eb.Options = &dpb.EnumOptions{}
+				ext, err := enumOpt.Build()
+				testutil.Ok(t, err)
+				err = dynamic.SetExtension(eb.Options, ext, "fubar")
+				testutil.Ok(t, err)
+
+				fb := newFile()
+				fb.AddEnum(eb)
+				checkBuildWithImportedExtensions(t, eb)
+			})
+
+			t.Run("enum val options", func(t *testing.T) {
+				evb := NewEnumValue("FOO")
+				// enum values must be connected to an enum
+				eb := NewEnum("Foo").AddValue(evb)
+				evb.Options = &dpb.EnumValueOptions{}
+				ext, err := enumValOpt.Build()
+				testutil.Ok(t, err)
+				err = dynamic.SetExtension(evb.Options, ext, "fubar")
+				testutil.Ok(t, err)
+
+				fb := newFile()
+				fb.AddEnum(eb)
+				checkBuildWithImportedExtensions(t, evb)
+			})
+
+			t.Run("service options", func(t *testing.T) {
+				sb := NewService("Foo")
+				sb.Options = &dpb.ServiceOptions{}
+				ext, err := svcOpt.Build()
+				testutil.Ok(t, err)
+				err = dynamic.SetExtension(sb.Options, ext, "fubar")
+				testutil.Ok(t, err)
+
+				fb := newFile()
+				fb.AddService(sb)
+				checkBuildWithImportedExtensions(t, sb)
+			})
+
+			t.Run("method options", func(t *testing.T) {
+				req := NewMessage("Request")
+				resp := NewMessage("Response")
+				mtb := NewMethod("Foo",
+					RpcTypeMessage(req, false),
+					RpcTypeMessage(resp, false))
+				// methods must be connected to a service
+				sb := NewService("Bar").AddMethod(mtb)
+				mtb.Options = &dpb.MethodOptions{}
+				ext, err := mtdOpt.Build()
+				testutil.Ok(t, err)
+				err = dynamic.SetExtension(mtb.Options, ext, "fubar")
+				testutil.Ok(t, err)
+
+				fb := newFile()
+				fb.AddService(sb).AddMessage(req).AddMessage(resp)
+				checkBuildWithImportedExtensions(t, mtb)
+			})
+		})
+	}
+}
+
+func checkBuildWithImportedExtensions(t *testing.T, builder Builder) {
+	// requiring options and succeeding (since they are defined in explicit import)
+	var opts BuilderOptions
+	opts.RequireInterpretedOptions = true
+	d, err := opts.Build(builder)
+	testutil.Ok(t, err)
+	// the only import is for the custom options
+	testutil.Eq(t, []string{"options.proto"}, d.GetFile().AsFileDescriptorProto().GetDependency())
+}
+
+func TestUseOfExtensionRegistry(t *testing.T) {
 	// Add option for every type to extension registry
 	var exts dynamic.ExtensionRegistry
 
@@ -971,4 +1377,12 @@ func TestRemoveField(t *testing.T) {
 	testutil.Eq(t, 2, len(children))
 	testutil.Eq(t, "one", children[0].GetName())
 	testutil.Eq(t, "three", children[1].GetName())
+}
+
+func clone(t *testing.T, fb *FileBuilder) *FileBuilder {
+	fd, err := fb.Build()
+	testutil.Ok(t, err)
+	fb, err = FromFile(fd)
+	testutil.Ok(t, err)
+	return fb
 }

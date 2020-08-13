@@ -2,15 +2,19 @@ package protoparse
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"sort"
-	"strings"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
 	dpb "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 
+	"github.com/jhump/protoreflect/codec"
+	"github.com/jhump/protoreflect/desc"
+	"github.com/jhump/protoreflect/internal"
 	"github.com/jhump/protoreflect/internal/testutil"
 )
 
@@ -20,8 +24,15 @@ func TestEmptyParse(t *testing.T) {
 			return ioutil.NopCloser(bytes.NewReader(nil)), nil
 		},
 	}
-	_, err := p.ParseFiles("foo.proto")
-	testutil.Require(t, err != nil)
+	fd, err := p.ParseFiles("foo.proto")
+	testutil.Ok(t, err)
+	testutil.Eq(t, 1, len(fd))
+	testutil.Eq(t, "foo.proto", fd[0].GetName())
+	testutil.Eq(t, 0, len(fd[0].GetDependencies()))
+	testutil.Eq(t, 0, len(fd[0].GetMessageTypes()))
+	testutil.Eq(t, 0, len(fd[0].GetEnumTypes()))
+	testutil.Eq(t, 0, len(fd[0].GetExtensions()))
+	testutil.Eq(t, 0, len(fd[0].GetServices()))
 }
 
 func TestSimpleParse(t *testing.T) {
@@ -31,7 +42,7 @@ func TestSimpleParse(t *testing.T) {
 	// testing. We do a *very* shallow check of what was parsed because we know
 	// it won't be fully correct until after linking. (So that will be tested
 	// below, where we parse *and* link.)
-	res, err := parseProtoFile("../../internal/testprotos/desc_test1.proto")
+	res, err := parseFileForTest("../../internal/testprotos/desc_test1.proto")
 	testutil.Ok(t, err)
 	fd := res.fd
 	testutil.Eq(t, "../../internal/testprotos/desc_test1.proto", fd.GetName())
@@ -40,7 +51,7 @@ func TestSimpleParse(t *testing.T) {
 	testutil.Require(t, hasMessage(fd, "TestMessage"))
 	protos[fd.GetName()] = res
 
-	res, err = parseProtoFile("../../internal/testprotos/desc_test2.proto")
+	res, err = parseFileForTest("../../internal/testprotos/desc_test2.proto")
 	testutil.Ok(t, err)
 	fd = res.fd
 	testutil.Eq(t, "../../internal/testprotos/desc_test2.proto", fd.GetName())
@@ -50,7 +61,7 @@ func TestSimpleParse(t *testing.T) {
 	testutil.Require(t, hasMessage(fd, "Frobnitz"))
 	protos[fd.GetName()] = res
 
-	res, err = parseProtoFile("../../internal/testprotos/desc_test_defaults.proto")
+	res, err = parseFileForTest("../../internal/testprotos/desc_test_defaults.proto")
 	testutil.Ok(t, err)
 	fd = res.fd
 	testutil.Eq(t, "../../internal/testprotos/desc_test_defaults.proto", fd.GetName())
@@ -58,7 +69,7 @@ func TestSimpleParse(t *testing.T) {
 	testutil.Require(t, hasMessage(fd, "PrimitiveDefaults"))
 	protos[fd.GetName()] = res
 
-	res, err = parseProtoFile("../../internal/testprotos/desc_test_field_types.proto")
+	res, err = parseFileForTest("../../internal/testprotos/desc_test_field_types.proto")
 	testutil.Ok(t, err)
 	fd = res.fd
 	testutil.Eq(t, "../../internal/testprotos/desc_test_field_types.proto", fd.GetName())
@@ -67,7 +78,7 @@ func TestSimpleParse(t *testing.T) {
 	testutil.Require(t, hasMessage(fd, "UnaryFields"))
 	protos[fd.GetName()] = res
 
-	res, err = parseProtoFile("../../internal/testprotos/desc_test_options.proto")
+	res, err = parseFileForTest("../../internal/testprotos/desc_test_options.proto")
 	testutil.Ok(t, err)
 	fd = res.fd
 	testutil.Eq(t, "../../internal/testprotos/desc_test_options.proto", fd.GetName())
@@ -77,7 +88,7 @@ func TestSimpleParse(t *testing.T) {
 	testutil.Require(t, hasMessage(fd, "ReallySimpleMessage"))
 	protos[fd.GetName()] = res
 
-	res, err = parseProtoFile("../../internal/testprotos/desc_test_proto3.proto")
+	res, err = parseFileForTest("../../internal/testprotos/desc_test_proto3.proto")
 	testutil.Ok(t, err)
 	fd = res.fd
 	testutil.Eq(t, "../../internal/testprotos/desc_test_proto3.proto", fd.GetName())
@@ -86,7 +97,7 @@ func TestSimpleParse(t *testing.T) {
 	testutil.Require(t, hasService(fd, "TestService"))
 	protos[fd.GetName()] = res
 
-	res, err = parseProtoFile("../../internal/testprotos/desc_test_wellknowntypes.proto")
+	res, err = parseFileForTest("../../internal/testprotos/desc_test_wellknowntypes.proto")
 	testutil.Ok(t, err)
 	fd = res.fd
 	testutil.Eq(t, "../../internal/testprotos/desc_test_wellknowntypes.proto", fd.GetName())
@@ -94,14 +105,14 @@ func TestSimpleParse(t *testing.T) {
 	testutil.Require(t, hasMessage(fd, "TestWellKnownTypes"))
 	protos[fd.GetName()] = res
 
-	res, err = parseProtoFile("../../internal/testprotos/nopkg/desc_test_nopkg.proto")
+	res, err = parseFileForTest("../../internal/testprotos/nopkg/desc_test_nopkg.proto")
 	testutil.Ok(t, err)
 	fd = res.fd
 	testutil.Eq(t, "../../internal/testprotos/nopkg/desc_test_nopkg.proto", fd.GetName())
 	testutil.Eq(t, "", fd.GetPackage())
 	protos[fd.GetName()] = res
 
-	res, err = parseProtoFile("../../internal/testprotos/nopkg/desc_test_nopkg_new.proto")
+	res, err = parseFileForTest("../../internal/testprotos/nopkg/desc_test_nopkg_new.proto")
 	testutil.Ok(t, err)
 	fd = res.fd
 	testutil.Eq(t, "../../internal/testprotos/nopkg/desc_test_nopkg_new.proto", fd.GetName())
@@ -109,7 +120,7 @@ func TestSimpleParse(t *testing.T) {
 	testutil.Require(t, hasMessage(fd, "TopLevel"))
 	protos[fd.GetName()] = res
 
-	res, err = parseProtoFile("../../internal/testprotos/pkg/desc_test_pkg.proto")
+	res, err = parseFileForTest("../../internal/testprotos/pkg/desc_test_pkg.proto")
 	testutil.Ok(t, err)
 	fd = res.fd
 	testutil.Eq(t, "../../internal/testprotos/pkg/desc_test_pkg.proto", fd.GetName())
@@ -142,13 +153,17 @@ func TestSimpleParse(t *testing.T) {
 	testutil.Eq(t, expected, actual)
 }
 
-func parseProtoFile(filename string) (*parseResult, error) {
+func parseFileForTest(filename string) (*parseResult, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	return parseProto(filename, f, true)
+	defer func() {
+		_ = f.Close()
+	}()
+	errs := newErrorHandler(nil, nil)
+	res := parseProto(filename, f, errs, true)
+	return res, errs.getError()
 }
 
 func hasExtension(fd *dpb.FileDescriptorProto, name string) bool {
@@ -187,227 +202,8 @@ func hasService(fd *dpb.FileDescriptorProto, name string) bool {
 	return false
 }
 
-func TestBasicValidation(t *testing.T) {
-	testCases := []struct {
-		contents string
-		succeeds bool
-		errMsg   string
-	}{
-		{
-			contents: `syntax = "proto1";`,
-			errMsg:   `test.proto:1:10: syntax value must be 'proto2' or 'proto3'`,
-		},
-		{
-			contents: `message Foo { optional string s = 5000000000; }`,
-			errMsg:   `test.proto:1:35: tag number 5000000000 is higher than max allowed tag number (536870911)`,
-		},
-		{
-			contents: `message Foo { optional string s = 19500; }`,
-			errMsg:   `test.proto:1:35: tag number 19500 is in disallowed reserved range 19000-19999`,
-		},
-		{
-			contents: `enum Foo { V = 5000000000; }`,
-			errMsg:   `test.proto:1:16: constant 5000000000 is out of range for int32 (-2147483648 to 2147483647)`,
-		},
-		{
-			contents: `enum Foo { V = -5000000000; }`,
-			errMsg:   `test.proto:1:16: constant -5000000000 is out of range for int32 (-2147483648 to 2147483647)`,
-		},
-		{
-			contents: `enum Foo { V = 0; reserved 5000000000 }`,
-			errMsg:   `test.proto:1:28: constant 5000000000 is out of range for int32 (-2147483648 to 2147483647)`,
-		},
-		{
-			contents: `enum Foo { V = 0; reserved -5000000000 }`,
-			errMsg:   `test.proto:1:28: constant -5000000000 is out of range for int32 (-2147483648 to 2147483647)`,
-		},
-		{
-			contents: `enum Foo { V = 0; reserved 5000000000 to 5 }`,
-			errMsg:   `test.proto:1:28: constant 5000000000 is out of range for int32 (-2147483648 to 2147483647)`,
-		},
-		{
-			contents: `enum Foo { V = 0; reserved 5 to 5000000000 }`,
-			errMsg:   `test.proto:1:33: constant 5000000000 is out of range for int32 (-2147483648 to 2147483647)`,
-		},
-		{
-			contents: `enum Foo { V = 0; reserved -5000000000 to -5 }`,
-			errMsg:   `test.proto:1:28: constant -5000000000 is out of range for int32 (-2147483648 to 2147483647)`,
-		},
-		{
-			contents: `enum Foo { V = 0; reserved -5 to -5000000000 }`,
-			errMsg:   `test.proto:1:34: constant -5000000000 is out of range for int32 (-2147483648 to 2147483647)`,
-		},
-		{
-			contents: `enum Foo { V = 0; reserved -5000000000 to 5 }`,
-			errMsg:   `test.proto:1:28: constant -5000000000 is out of range for int32 (-2147483648 to 2147483647)`,
-		},
-		{
-			contents: `enum Foo { V = 0; reserved -5 to 5000000000 }`,
-			errMsg:   `test.proto:1:34: constant 5000000000 is out of range for int32 (-2147483648 to 2147483647)`,
-		},
-		{
-			contents: `enum Foo { }`,
-			errMsg:   `test.proto:1:1: enums must define at least one value`,
-		},
-		{
-			contents: `message Foo { oneof Bar { } }`,
-			errMsg:   `test.proto:1:15: oneof must contain at least one field`,
-		},
-		{
-			contents: `message Foo { extensions 1 to max; } extend Foo { }`,
-			errMsg:   `test.proto:1:38: extend sections must define at least one extension`,
-		},
-		{
-			contents: `message Foo { option map_entry = true; }`,
-			errMsg:   `test.proto:1:34: message Foo: map_entry option should not be set explicitly; use map type instead`,
-		},
-		{
-			contents: `message Foo { option map_entry = false; }`,
-			succeeds: true, // okay if explicit setting is false
-		},
-		{
-			contents: `syntax = "proto2"; message Foo { string s = 1; }`,
-			errMsg:   `test.proto:1:41: field Foo.s: field has no label, but proto2 must indicate 'optional' or 'required'`,
-		},
-		{
-			contents: `message Foo { string s = 1; }`, // syntax defaults to proto2
-			errMsg:   `test.proto:1:22: field Foo.s: field has no label, but proto2 must indicate 'optional' or 'required'`,
-		},
-		{
-			contents: `syntax = "proto3"; message Foo { optional string s = 1; }`,
-			errMsg:   `test.proto:1:34: field Foo.s: field has label LABEL_OPTIONAL, but proto3 should omit labels other than 'repeated'`,
-		},
-		{
-			contents: `syntax = "proto3"; message Foo { required string s = 1; }`,
-			errMsg:   `test.proto:1:34: field Foo.s: field has label LABEL_REQUIRED, but proto3 should omit labels other than 'repeated'`,
-		},
-		{
-			contents: `message Foo { extensions 1 to max; } extend Foo { required string sss = 100; }`,
-			errMsg:   `test.proto:1:51: field sss: extension fields cannot be 'required'`,
-		},
-		{
-			contents: `syntax = "proto3"; message Foo { optional group Grp = 1 { } }`,
-			errMsg:   `test.proto:1:43: field Foo.grp: groups are not allowed in proto3`,
-		},
-		{
-			contents: `syntax = "proto3"; message Foo { extensions 1 to max; }`,
-			errMsg:   `test.proto:1:45: message Foo: extension ranges are not allowed in proto3`,
-		},
-		{
-			contents: `syntax = "proto3"; message Foo { string s = 1 [default = "abcdef"]; }`,
-			errMsg:   `test.proto:1:48: field Foo.s: default values are not allowed in proto3`,
-		},
-		{
-			contents: `enum Foo { V1 = 1; V2 = 1; }`,
-			errMsg:   `test.proto:1:25: enum Foo: values V1 and V2 both have the same numeric value 1; use allow_alias option if intentional`,
-		},
-		{
-			contents: `enum Foo { option allow_alias = true; V1 = 1; V2 = 1; }`,
-			succeeds: true,
-		},
-		{
-			contents: `syntax = "proto3"; enum Foo { V1 = 0; reserved 1 to 20; reserved "V2"; }`,
-			succeeds: true,
-		},
-		{
-			contents: `enum Foo { V1 = 1; reserved 1 to 20; reserved "V2"; }`,
-			errMsg:   `test.proto:1:17: enum Foo: value V1 is using number 1 which is in reserved range 1 to 20`,
-		},
-		{
-			contents: `enum Foo { V1 = 20; reserved 1 to 20; reserved "V2"; }`,
-			errMsg:   `test.proto:1:17: enum Foo: value V1 is using number 20 which is in reserved range 1 to 20`,
-		},
-		{
-			contents: `enum Foo { V2 = 0; reserved 1 to 20; reserved "V2"; }`,
-			errMsg:   `test.proto:1:12: enum Foo: value V2 is using a reserved name`,
-		},
-		{
-			contents: `enum Foo { V0 = 0; reserved 1 to 20; reserved 21 to 40; reserved "V2"; }`,
-			succeeds: true,
-		},
-		{
-			contents: `enum Foo { V0 = 0; reserved 1 to 20; reserved 20 to 40; reserved "V2"; }`,
-			errMsg:   `test.proto:1:47: enum Foo: reserved ranges overlap: 1 to 20 and 20 to 40`,
-		},
-		{
-			contents: `syntax = "proto3"; enum Foo { FIRST = 1; }`,
-			errMsg:   `test.proto:1:39: enum Foo: proto3 requires that first value in enum have numeric value of 0`,
-		},
-		{
-			contents: `syntax = "proto3"; message Foo { string s = 1; int32 i = 1; }`,
-			errMsg:   `test.proto:1:58: message Foo: fields s and i both have the same tag 1`,
-		},
-		{
-			contents: `message Foo { reserved 1 to 10, 10 to 12; }`,
-			errMsg:   `test.proto:1:33: message Foo: reserved ranges overlap: 1 to 10 and 10 to 12`,
-		},
-		{
-			contents: `message Foo { extensions 1 to 10, 10 to 12; }`,
-			errMsg:   `test.proto:1:35: message Foo: extension ranges overlap: 1 to 10 and 10 to 12`,
-		},
-		{
-			contents: `message Foo { reserved 1 to 10; extensions 10 to 12; }`,
-			errMsg:   `test.proto:1:44: message Foo: extension range 10 to 12 overlaps reserved range 1 to 10`,
-		},
-		{
-			contents: `message Foo { reserved 1, 2 to 10, 11 to 20; extensions 21 to 22; }`,
-			succeeds: true,
-		},
-		{
-			contents: `message Foo { reserved 10 to 1; }`,
-			errMsg:   `test.proto:1:24: range, 10 to 1, is invalid: start must be <= end`,
-		},
-		{
-			contents: `message Foo { extensions 10 to 1; }`,
-			errMsg:   `test.proto:1:26: range, 10 to 1, is invalid: start must be <= end`,
-		},
-		{
-			contents: `message Foo { reserved 1 to 5000000000; }`,
-			errMsg:   `test.proto:1:29: range end is out-of-range tag: 5000000000 (should be between 0 and 536870911)`,
-		},
-		{
-			contents: `message Foo { extensions 1000000000; }`,
-			errMsg:   `test.proto:1:26: range includes out-of-range tag: 1000000000 (should be between 0 and 536870911)`,
-		},
-		{
-			contents: `message Foo { extensions 1000000000 to 1000000001; }`,
-			errMsg:   `test.proto:1:26: range start is out-of-range tag: 1000000000 (should be between 0 and 536870911)`,
-		},
-		{
-			contents: `message Foo { extensions 1000000000 to 1000000001; }`,
-			errMsg:   `test.proto:1:26: range start is out-of-range tag: 1000000000 (should be between 0 and 536870911)`,
-		},
-		{
-			contents: `message Foo { reserved "foo", "foo"; }`,
-			errMsg:   `test.proto:1:31: name "foo" is reserved multiple times`,
-		},
-		{
-			contents: `message Foo { reserved "foo"; optional string foo = 1; }`,
-			errMsg:   `test.proto:1:47: message Foo: field foo is using a reserved name`,
-		},
-		{
-			contents: `message Foo { reserved 1 to 10; optional string foo = 1; }`,
-			errMsg:   `test.proto:1:55: message Foo: field foo is using tag 1 which is in reserved range 1 to 10`,
-		},
-		{
-			contents: `message Foo { extensions 1 to 10; optional string foo = 1; }`,
-			errMsg:   `test.proto:1:57: message Foo: field foo is using tag 1 which is in extension range 1 to 10`,
-		},
-	}
-
-	for i, tc := range testCases {
-		_, err := parseProto("test.proto", strings.NewReader(tc.contents), true)
-		if tc.succeeds {
-			testutil.Ok(t, err, "case #%d should succeed", i)
-		} else {
-			testutil.Require(t, err != nil, "case #%d should fail", i)
-			testutil.Eq(t, tc.errMsg, err.Error(), "case #%d bad error message", i)
-		}
-	}
-}
-
 func TestAggregateValueInUninterpretedOptions(t *testing.T) {
-	res, err := parseProtoFile("../../internal/testprotos/desc_test_complex.proto")
+	res, err := parseFileForTest("../../internal/testprotos/desc_test_complex.proto")
 	testutil.Ok(t, err)
 	fd := res.fd
 
@@ -425,7 +221,7 @@ func TestParseFilesMessageComments(t *testing.T) {
 	protos, err := p.ParseFiles("../../internal/testprotos/desc_test1.proto")
 	testutil.Ok(t, err)
 	comments := ""
-	expected := " Comment for TestMessage"
+	expected := " Comment for TestMessage\n"
 	for _, p := range protos {
 		msg := p.FindMessage("testprotos.TestMessage")
 		if msg != nil {
@@ -437,40 +233,6 @@ func TestParseFilesMessageComments(t *testing.T) {
 		}
 	}
 	testutil.Eq(t, expected, comments)
-}
-
-func TestResolveFilenames(t *testing.T) {
-	relImportPaths := []string{
-		"../../internal/testprotos/protoparse",
-	}
-	relFilePaths := []string{
-		"../../internal/testprotos/protoparse/a/b/b1.proto",
-		"../../internal/testprotos/protoparse/a/b/b2.proto",
-		"../../internal/testprotos/protoparse/c/c.proto",
-	}
-
-	absImportPaths, err := absoluteFilePaths(relImportPaths)
-	testutil.Require(t, err == nil, "%v", err)
-	absFilePaths, err := absoluteFilePaths(relFilePaths)
-	testutil.Require(t, err == nil, "%v", err)
-	relResolvedFilePaths, err := ResolveFilenames(relImportPaths, relFilePaths...)
-	testutil.Require(t, err == nil, "%v", err)
-	absResolvedFilePaths, err := ResolveFilenames(absImportPaths, absFilePaths...)
-	testutil.Require(t, err == nil, "%v", err)
-
-	p := Parser{ImportPaths: relImportPaths}
-	protos, err := p.ParseFiles(relResolvedFilePaths...)
-	testutil.Ok(t, err)
-	testutil.Eq(t, len(relFilePaths), len(protos))
-
-	p = Parser{ImportPaths: absImportPaths}
-	protos, err = p.ParseFiles(absResolvedFilePaths...)
-	testutil.Ok(t, err)
-	testutil.Eq(t, len(absFilePaths), len(protos))
-
-	_, err = ResolveFilenames([]string{}, absFilePaths...)
-	testutil.Require(t, err != nil)
-	testutil.Eq(t, errNoImportPathsForAbsoluteFilePath, err)
 }
 
 func TestParseFilesWithImportsNoImportPath(t *testing.T) {
@@ -493,4 +255,152 @@ func TestParseFilesWithImportsNoImportPath(t *testing.T) {
 
 	testutil.Ok(t, err)
 	testutil.Eq(t, len(relFilePaths), len(protos))
+}
+
+func TestParseFilesWithDependencies(t *testing.T) {
+	// Create some file contents that import a non-well-known proto.
+	// (One of the protos in internal/testprotos is fine.)
+	contents := map[string]string{
+		"test.proto": `
+			syntax = "proto3";
+			import "desc_test_wellknowntypes.proto";
+
+			message TestImportedType {
+				testprotos.TestWellKnownTypes imported_field = 1;
+			}
+		`,
+	}
+
+	// Establish that we *can* parse the source file with a parser that
+	// registers the dependency.
+	t.Run("DependencyIncluded", func(t *testing.T) {
+		// Create a dependency-aware parser.
+		parser := Parser{
+			Accessor: FileContentsFromMap(contents),
+			LookupImport: func(imp string) (*desc.FileDescriptor, error) {
+				if imp == "desc_test_wellknowntypes.proto" {
+					return desc.LoadFileDescriptor(imp)
+				}
+				return nil, errors.New("unexpected filename")
+			},
+		}
+		if _, err := parser.ParseFiles("test.proto"); err != nil {
+			t.Errorf("Could not parse with a non-well-known import: %v", err)
+		}
+	})
+	t.Run("DependencyIncludedProto", func(t *testing.T) {
+		// Create a dependency-aware parser.
+		parser := Parser{
+			Accessor: FileContentsFromMap(contents),
+			LookupImportProto: func(imp string) (*dpb.FileDescriptorProto, error) {
+				if imp == "desc_test_wellknowntypes.proto" {
+					fileDescriptor, err := desc.LoadFileDescriptor(imp)
+					if err != nil {
+						return nil, err
+					}
+					return fileDescriptor.AsFileDescriptorProto(), nil
+				}
+				return nil, errors.New("unexpected filename")
+			},
+		}
+		if _, err := parser.ParseFiles("test.proto"); err != nil {
+			t.Errorf("Could not parse with a non-well-known import: %v", err)
+		}
+	})
+
+	// Establish that we *can not* parse the source file with a parser that
+	// did not register the dependency.
+	t.Run("DependencyExcluded", func(t *testing.T) {
+		// Create a dependency-aware parser.
+		parser := Parser{
+			Accessor: FileContentsFromMap(contents),
+		}
+		if _, err := parser.ParseFiles("test.proto"); err == nil {
+			t.Errorf("Expected parse to fail due to lack of an import.")
+		}
+	})
+
+	// Establish that the accessor has precedence over LookupImport.
+	t.Run("AccessorWins", func(t *testing.T) {
+		// Create a dependency-aware parser that should never be called.
+		parser := Parser{
+			Accessor: FileContentsFromMap(map[string]string{
+				"test.proto": `syntax = "proto3";`,
+			}),
+			LookupImport: func(imp string) (*desc.FileDescriptor, error) {
+				t.Errorf("LookupImport was called on a filename available to the Accessor.")
+				return nil, errors.New("unimportant")
+			},
+		}
+		if _, err := parser.ParseFiles("test.proto"); err != nil {
+			t.Error(err)
+		}
+	})
+}
+
+func TestParseCommentsBeforeDot(t *testing.T) {
+	accessor := FileContentsFromMap(map[string]string{
+		"test.proto": `
+syntax = "proto3";
+message Foo {
+  // leading comments
+  .Foo foo = 1;
+}
+`,
+	})
+
+	p := Parser{
+		Accessor:              accessor,
+		IncludeSourceCodeInfo: true,
+	}
+	fds, err := p.ParseFiles("test.proto")
+	testutil.Ok(t, err)
+
+	comment := fds[0].GetMessageTypes()[0].GetFields()[0].GetSourceInfo().GetLeadingComments()
+	testutil.Eq(t, " leading comments\n", comment)
+}
+
+func TestParseCustomOptions(t *testing.T) {
+	accessor := FileContentsFromMap(map[string]string{
+		"test.proto": `
+syntax = "proto3";
+import "google/protobuf/descriptor.proto";
+extend google.protobuf.MessageOptions {
+    string foo = 30303;
+    int64 bar = 30304;
+}
+message Foo {
+  option (.foo) = "foo";
+  option (bar) = 123;
+}
+`,
+	})
+
+	p := Parser{
+		Accessor:              accessor,
+		IncludeSourceCodeInfo: true,
+	}
+	fds, err := p.ParseFiles("test.proto")
+	testutil.Ok(t, err)
+
+	md := fds[0].GetMessageTypes()[0]
+	opts := md.GetMessageOptions()
+	data := internal.GetUnrecognized(opts)
+	buf := codec.NewBuffer(data)
+
+	tag, wt, err := buf.DecodeTagAndWireType()
+	testutil.Ok(t, err)
+	testutil.Eq(t, int32(30303), tag)
+	testutil.Eq(t, int8(proto.WireBytes), wt)
+	fieldData, err := buf.DecodeRawBytes(false)
+	testutil.Ok(t, err)
+	testutil.Eq(t, "foo", string(fieldData))
+
+	tag, wt, err = buf.DecodeTagAndWireType()
+	testutil.Ok(t, err)
+	testutil.Eq(t, int32(30304), tag)
+	testutil.Eq(t, int8(proto.WireVarint), wt)
+	fieldVal, err := buf.DecodeVarint()
+	testutil.Ok(t, err)
+	testutil.Eq(t, uint64(123), fieldVal)
 }

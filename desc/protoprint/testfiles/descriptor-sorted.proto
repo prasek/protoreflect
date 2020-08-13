@@ -14,6 +14,8 @@ option java_package = "com.google.protobuf";
 
 option objc_class_prefix = "GPB";
 
+// descriptor.proto must be optimized for speed because reflection-based
+// algorithms don't work during bootstrapping.
 option optimize_for = SPEED;
 
 // Describes a message type.
@@ -41,9 +43,9 @@ message DescriptorProto {
    repeated string reserved_name = 10;
 
    message ExtensionRange {
-      optional int32 start = 1;
+      optional int32 start = 1; // Inclusive.
 
-      optional int32 end = 2;
+      optional int32 end = 2; // Exclusive.
 
       optional ExtensionRangeOptions options = 3;
    }
@@ -177,6 +179,29 @@ message FieldDescriptorProto {
    // will be used. Otherwise, it's deduced from the field's name by converting
    // it to camelCase.
    optional string json_name = 10;
+
+   // If true, this is a proto3 "optional". When a proto3 field is optional, it
+   // tracks presence regardless of field type.
+   //
+   // When proto3_optional is true, this field must be belong to a oneof to
+   // signal to old proto3 clients that presence is tracked for this field. This
+   // oneof is known as a "synthetic" oneof, and this field must be its sole
+   // member (each proto3 optional field gets its own synthetic oneof). Synthetic
+   // oneofs exist in the descriptor only, and do not generate any API. Synthetic
+   // oneofs must be ordered after all "real" oneofs.
+   //
+   // For message fields, proto3_optional doesn't create any semantic change,
+   // since non-repeated message fields always track presence. However it still
+   // indicates the semantic detail of whether the user wrote "optional" or not.
+   // This can be useful for round-tripping the .proto file. For consistency we
+   // give message fields a synthetic oneof also, even though it is not required
+   // to track presence. This is especially important because the parser can't
+   // tell if a field is a message or an enum, so it must always create a
+   // synthetic oneof.
+   //
+   // Proto2 optional fields do not set this flag, because they already indicate
+   // optional with `LABEL_OPTIONAL`.
+   optional bool proto3_optional = 17;
 
    enum Label {
       // 0 is reserved for errors
@@ -441,7 +466,7 @@ message FileOptions {
 
    // Enables the use of arenas for the proto messages in this file. This applies
    // only to generated classes for C++.
-   optional bool cc_enable_arenas = 31 [default = false];
+   optional bool cc_enable_arenas = 31 [default = true];
 
    // Sets the objective c class prefix which is prepended to all objective c
    // generated classes from this .proto. There is no default.
@@ -466,6 +491,16 @@ message FileOptions {
    optional string php_namespace = 41;
 
    optional bool php_generic_services = 42 [default = false];
+
+   // Use this option to change the namespace of php generated metadata classes.
+   // Default is empty. When this option is empty, the proto file name will be
+   // used for determining the namespace.
+   optional string php_metadata_namespace = 44;
+
+   // Use this option to change the package of ruby generated classes. Default
+   // is empty. When this option is not set, the package name will be used for
+   // determining the ruby package.
+   optional string ruby_package = 45;
 
    // The parser stores options it doesn't recognize here.
    // See the documentation for the "Options" section above.
@@ -560,7 +595,7 @@ message MessageOptions {
    //
    // Implementations may choose not to generate the map_entry=true message, but
    // use a native map in the target language to hold the keys and values.
-   // The reflection APIs in such implementions still need to work as
+   // The reflection APIs in such implementations still need to work as
    // if the field is a repeated message field.
    //
    // NOTE: Do not set the option in .proto files. Always use the maps syntax
@@ -697,7 +732,7 @@ message SourceCodeInfo {
    //   beginning of the "extend" block and is shared by all extensions within
    //   the block.
    // - Just because a location's span is a subset of some other location's span
-   //   does not mean that it is a descendent.  For example, a "group" defines
+   //   does not mean that it is a descendant.  For example, a "group" defines
    //   both a type and a field in a single declaration.  Thus, the locations
    //   corresponding to the type and field and their components will overlap.
    // - Code which tries to interpret locations should probably be designed to

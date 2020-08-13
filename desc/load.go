@@ -210,7 +210,7 @@ type protoEnum interface {
 }
 
 // NB: There is no LoadEnumDescriptor that takes a fully-qualified enum name because
-// it is not useful since protoc-gen-go does not expose the name anywhere in generated
+// it is not useful since protoc-gen-gogo does not expose the name anywhere in generated
 // code or register it in a way that is it accessible for reflection code. This also
 // means we have to cache enum descriptors differently -- we can only cache them as
 // they are requested, as opposed to caching all enum types whenever a file descriptor

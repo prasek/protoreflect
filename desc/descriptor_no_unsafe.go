@@ -1,5 +1,6 @@
-//+build appengine
-// TODO: other build tags for environments where unsafe package is inappropriate
+//+build appengine gopherjs purego
+// NB: other environments where unsafe is unappropriate should use "purego" build tag
+// https://github.com/golang/go/issues/23172
 
 package desc
 
@@ -12,12 +13,9 @@ type memoizedDefault struct{}
 func (md *MessageDescriptor) FindFieldByJSONName(jsonName string) *FieldDescriptor {
 	// NB: With allowed use of unsafe, we use it to atomically define an index
 	// via atomic.LoadPointer/atomic.StorePointer. Without it, we skip the index
-	// and do an linear scan of fields each time.
+	// and must do a linear scan of fields each time.
 	for _, f := range md.fields {
-		jn := f.proto.GetJsonName()
-		if jn == "" {
-			jn = f.proto.GetName()
-		}
+		jn := f.GetJSONName()
 		if jn == jsonName {
 			return f
 		}

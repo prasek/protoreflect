@@ -28,6 +28,7 @@ message Request {
 
   reserved "foo", "bar", "baz";
 
+  // Group comment
   optional group Extras = 3 {
     option (testprotos.mfubar) = false;
 
@@ -70,6 +71,23 @@ message Request {
 
     option (testprotos.efubar) = 123;
   }
+
+  // can be this or that
+  oneof abc {
+    string this = 4;
+
+    int32 that = 5;
+  }
+
+  // can be these or those
+  oneof xyz {
+    string these = 6;
+
+    int32 those = 7;
+  }
+
+  // map field
+  map<string, string> things = 8;
 }
 
 extend Request {
@@ -80,9 +98,12 @@ extend Request {
   optional uint64 guid2 = 124;
 }
 
+message AnEmptyMessage {
+}
+
 // Service comment
 service RpcService {
-  option (testprotos.sfubar) = { id:100 name:"bob" };
+  option (testprotos.sfubar) = { id:100 name:"bob"  };
 
   option deprecated = false;
 

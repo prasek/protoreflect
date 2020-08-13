@@ -22,14 +22,14 @@ import "desc_test_options.proto";
 
 // We need a request for our RPC service below.
 message /* detached message name */ /* request with a capital R */ Request /* trailer */ {
-  option deprecated = true;
+  option deprecated = true; // deprecated!
 
   // A field comment
   repeated int32 ids = /* detached tag */ /* tag numero uno */ 1 /*
        * tag trailer
        * that spans multiple lines...
        * more than two.
-       */ [packed = true, json_name = "|foo|", (testprotos.ffubar) = "abc", (testprotos.ffubarb) = "xyz"]; // field trailer #1...
+       */ [packed = true /* packed! */, json_name = "|foo|" /* custom JSON! */, (testprotos.ffubar) = "abc", (testprotos.ffubarb) = "xyz"]; // field trailer #1...
 
   // lead mfubar
   option (testprotos.mfubar) = true; // trailing mfubar
@@ -51,7 +51,9 @@ message /* detached message name */ /* request with a capital R */ Request /* tr
 
   reserved "foo", "bar", "baz";
 
+  // Group comment
   optional group Extras = 3 {
+    // this is a custom option
     option (testprotos.mfubar) = false;
 
     optional double dbl = 1;
@@ -65,6 +67,7 @@ message /* detached message name */ /* request with a capital R */ Request /* tr
   }
 
   enum MarioCharacters /* "super"! */ {
+    // allow_alias comments!
     option allow_alias = true;
 
     MARIO = 1 [(testprotos.evfubars) = -314, (testprotos.evfubar) = 278];
@@ -93,22 +96,44 @@ message /* detached message name */ /* request with a capital R */ Request /* tr
 
     option (testprotos.efubar) = 123;
   }
+
+  // can be this or that
+  oneof abc {
+    string this = 4;
+
+    int32 that = 5;
+  }
+
+  // can be these or those
+  oneof xyz {
+    string these = 6;
+
+    int32 those = 7;
+  }
+
+  // map field
+  map<string, string> things = 8;
 }
 // And next we'll need some extensions...
 
-extend /* extendee comment */ Request {
+extend /* extendee comment */ Request /* extendee trailer */ {
   // comment for guid1
   optional uint64 guid1 = 123;
 
   // ... and a comment for guid2
   optional uint64 guid2 = 124;
 }
+// extend trailer...
+
+message /* name leading comment */ AnEmptyMessage /* name trailing comment */ {
+}
 
 // Service comment
 service /* service name */ RpcService {
-  option (testprotos.sfubar) = { id:100 name:"bob" };
+  // option that sets field
+  option (testprotos.sfubar) = { id:100 name:"bob"  };
 
-  option deprecated = false;
+  option deprecated = false; // DEPRECATED!
 
   option (testprotos.sfubare) = VALUE;
 

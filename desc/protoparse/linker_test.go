@@ -40,6 +40,24 @@ func TestMultiFileLink(t *testing.T) {
 	}
 }
 
+func TestProto3Optional(t *testing.T) {
+	fds, err := Parser{ImportPaths: []string{"../../internal/testprotos"}}.ParseFiles("proto3_optional/desc_test_proto3_optional.proto")
+	testutil.Ok(t, err)
+
+	data, err := ioutil.ReadFile("../../internal/testprotos/proto3_optional/desc_test_proto3_optional.protoset")
+	testutil.Ok(t, err)
+	var fdset dpb.FileDescriptorSet
+	err = proto.Unmarshal(data, &fdset)
+	testutil.Ok(t, err)
+
+	exp, err := desc.CreateFileDescriptorFromSet(&fdset)
+	testutil.Ok(t, err)
+	// not comparing source code info
+	exp.AsFileDescriptorProto().SourceCodeInfo = nil
+
+	checkFiles(t, fds[0], exp, map[string]struct{}{})
+}
+
 func checkFiles(t *testing.T, act, exp *desc.FileDescriptor, checked map[string]struct{}) {
 	if _, ok := checked[act.GetName()]; ok {
 		// already checked
@@ -72,14 +90,14 @@ func TestLinkerValidation(t *testing.T) {
 			map[string]string{
 				"foo.proto": "import \"foo2.proto\"; message fubar{}",
 			},
-			"failed to load imports for \"foo.proto\": file not found: foo2.proto",
+			`foo.proto:1:8: file not found: foo2.proto`,
 		},
 		{
 			map[string]string{
 				"foo.proto":  "import \"foo2.proto\"; message fubar{}",
 				"foo2.proto": "import \"foo.proto\"; message baz{}",
 			},
-			"cycle found in imports: \"foo.proto\" -> \"foo2.proto\" -> \"foo.proto\"",
+			`foo.proto:1:8: cycle found in imports: "foo.proto" -> "foo2.proto" -> "foo.proto"`,
 		},
 		{
 			map[string]string{
@@ -373,5 +391,57 @@ func TestProto3Enums(t *testing.T) {
 				testutil.Ok(t, err)
 			}
 		}
+	}
+}
+
+func TestCustomErrorReporterWithLinker(t *testing.T) {
+	input := map[string]string{
+		"a/b/b.proto": `package a.b;
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.FieldOptions {
+  optional Foo foo = 50001;
+}
+
+message Foo {
+  optional string bar = 1;
+}`,
+		"a/c/c.proto": `import "a/b/b.proto";
+
+message ReferencesFooOption {
+  optional string baz = 1 [(a.b.foo).bat = "hello"];
+}`,
+	}
+	errMsg := "a/c/c.proto:4:38: field ReferencesFooOption.baz: option (a.b.foo).bat: field bat of a.b.Foo does not exist"
+
+	acc := func(filename string) (io.ReadCloser, error) {
+		f, ok := input[filename]
+		if !ok {
+			return nil, fmt.Errorf("file not found: %s", filename)
+		}
+		return ioutil.NopCloser(strings.NewReader(f)), nil
+	}
+	names := make([]string, 0, len(input))
+	for k := range input {
+		names = append(names, k)
+	}
+	var errs []error
+	_, err := Parser{
+		Accessor: acc,
+		ErrorReporter: func(errorWithPos ErrorWithPos) error {
+			errs = append(errs, errorWithPos)
+			// need to return nil to make sure this test case works
+			// this will result in us only getting an error from errorHandler.getError()
+			// we need to make sure this is called correctly in the linker so that all
+			// errors are properly propagated from the return value of linkFiles(), and
+			// therefor Parse returns ErrInvalidSource
+			return nil
+		},
+	}.ParseFiles(names...)
+	if err != ErrInvalidSource {
+		t.Errorf("expecting validation error %v; instead got: %v", ErrInvalidSource, err)
+	} else if len(errs) != 1 || errs[0].Error() != errMsg {
+		t.Errorf("expecting validation error %q; instead got: %q", errs[0].Error(), errMsg)
 	}
 }
