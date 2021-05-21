@@ -42,7 +42,7 @@ outdir="../../../../.."
 ${PROTOC} "--gogo_out=plugins=grpc,${PKGMAP}:$outdir" -I. *.proto
 ${PROTOC} "--gogo_out=plugins=grpc,${PKGMAP}:$outdir" -I. nopkg/*.proto
 ${PROTOC} "--gogo_out=plugins=grpc,${PKGMAP}:$outdir" -I. pkg/*.proto
-
+${PROTOC} "--gogo_out=plugins=grpc,${PKGMAP}:$outdir" -I. grpc/*.proto
 
 # And make descriptor set (with source info) for several files
 ${PROTOC} --descriptor_set_out=./desc_test1.protoset --include_source_info --include_imports -I. desc_test1.proto

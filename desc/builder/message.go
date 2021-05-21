@@ -482,12 +482,12 @@ func (mb *MessageBuilder) TryAddNestedMessage(nmb *MessageBuilder) error {
 	needToUnlinkFirst := mb.isPresentButNotChild(nmb)
 	if needToUnlinkFirst {
 		Unlink(nmb)
-		mb.addSymbol(nmb)
+		_ = mb.addSymbol(nmb)
 	} else {
 		if err := mb.addSymbol(nmb); err != nil {
 			return err
 		}
-		Unlink(mb)
+		Unlink(nmb)
 	}
 	nmb.setParent(mb)
 	mb.nestedMessages = append(mb.nestedMessages, nmb)
@@ -755,10 +755,12 @@ func (mb *MessageBuilder) buildProto(path []int32, sourceInfo *dpb.SourceCodeInf
 
 	if len(needTagsAssigned) > 0 {
 		tags := make([]int, len(fields)-len(needTagsAssigned))
-		for i, fld := range fields {
+		tagsIndex := 0
+		for _, fld := range fields {
 			tag := fld.GetNumber()
 			if tag != 0 {
-				tags[i] = int(tag)
+				tags[tagsIndex] = int(tag)
+				tagsIndex++
 			}
 		}
 		sort.Ints(tags)

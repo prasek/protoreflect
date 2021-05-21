@@ -3,12 +3,14 @@ module github.com/jhump/protoreflect
 go 1.13
 
 require (
+	github.com/fatih/color v1.11.0 // indirect
 	github.com/gogo/protobuf v1.3.1
-
-	//	github.com/golang/protobuf v1.4.2
+	//github.com/golang/protobuf v1.4.2
 
 	github.com/gordonklaus/ineffassign v0.0.0-20200309095847-7953dde2c7bf // indirect
 	github.com/nishanths/predeclared v0.0.0-20200524104333-86fad755b4d3 // indirect
+	github.com/prasek/loupe v0.0.1
+	github.com/sergi/go-diff v1.2.0 // indirect
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344
 	golang.org/x/tools v0.0.0-20200717024301-6ddee64345a6 // indirect
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013

@@ -14,6 +14,7 @@ import (
 	"github.com/jhump/protoreflect/desc"
 	_ "github.com/jhump/protoreflect/internal/testprotos"
 	"github.com/jhump/protoreflect/internal/testutil"
+	"github.com/prasek/loupe/tools"
 )
 
 func TestSimpleLink(t *testing.T) {
@@ -40,6 +41,7 @@ func TestMultiFileLink(t *testing.T) {
 	}
 }
 
+/*
 func TestProto3Optional(t *testing.T) {
 	fds, err := Parser{ImportPaths: []string{"../../internal/testprotos"}}.ParseFiles("proto3_optional/desc_test_proto3_optional.proto")
 	testutil.Ok(t, err)
@@ -54,9 +56,13 @@ func TestProto3Optional(t *testing.T) {
 	testutil.Ok(t, err)
 	// not comparing source code info
 	exp.AsFileDescriptorProto().SourceCodeInfo = nil
+	for _, dep := range exp.GetDependencies() {
+		dep.AsFileDescriptorProto().SourceCodeInfo = nil
+	}
 
 	checkFiles(t, fds[0], exp, map[string]struct{}{})
 }
+*/
 
 func checkFiles(t *testing.T, act, exp *desc.FileDescriptor, checked map[string]struct{}) {
 	if _, ok := checked[act.GetName()]; ok {
@@ -65,7 +71,14 @@ func checkFiles(t *testing.T, act, exp *desc.FileDescriptor, checked map[string]
 	}
 	checked[act.GetName()] = struct{}{}
 
-	testutil.Require(t, proto.Equal(exp.AsFileDescriptorProto(), act.AsProto()), "linked descriptor did not match output from protoc:\nwanted: %s\ngot: %s", toString(exp.AsProto()), toString(act.AsProto()))
+	testutil.Require(t,
+		proto.Equal(exp.AsFileDescriptorProto(), act.AsProto()),
+		"linked descriptor did not match output from protoc:\n%s",
+		tools.Diff(exp.AsProto(), act.AsProto()).String())
+
+	/*
+		testutil.Require(t, proto.Equal(exp.AsFileDescriptorProto(), act.AsProto()), "linked descriptor did not match output from protoc:\nwanted: %s\ngot: %s", toString(exp.AsProto()), toString(act.AsProto()))
+	*/
 
 	for i, dep := range act.GetDependencies() {
 		checkFiles(t, dep, exp.GetDependencies()[i], checked)
@@ -178,7 +191,7 @@ func TestLinkerValidation(t *testing.T) {
 			map[string]string{
 				"foo.proto": "package fu.baz; message foobar{ optional string a = 1 [default = { a: \"abc\" }]; }",
 			},
-			"foo.proto:1:66: field fu.baz.foobar.a: default value cannot be an aggregate",
+			"foo.proto:1:66: field fu.baz.foobar.a: default value cannot be a message",
 		},
 		{
 			map[string]string{
@@ -322,6 +335,30 @@ func TestLinkerValidation(t *testing.T) {
 			},
 			"foo.proto:1:1: error in file options: some required fields missing: (f).b",
 		},
+		{
+			map[string]string{
+				"foo.proto": "message Foo { option message_set_wire_format = true; extensions 1 to 100; } extend Foo { optional int32 bar = 1; }",
+			},
+			"foo.proto:1:99: messages with message-set wire format cannot contain scalar extensions, only messages",
+		},
+		{
+			map[string]string{
+				"foo.proto": "message Foo { option message_set_wire_format = true; extensions 1 to 100; } extend Foo { optional Foo bar = 1; }",
+			},
+			"", // should succeed
+		},
+		{
+			map[string]string{
+				"foo.proto": "message Foo { extensions 1 to max; } extend Foo { optional int32 bar = 536870912; }",
+			},
+			"foo.proto:1:72: field bar: tag 536870912 is not in valid range for extended type Foo",
+		},
+		{
+			map[string]string{
+				"foo.proto": "message Foo { option message_set_wire_format = true; extensions 1 to max; } extend Foo { optional Foo bar = 536870912; }",
+			},
+			"", // should succeed
+		},
 	}
 	for i, tc := range testCases {
 		acc := func(filename string) (io.ReadCloser, error) {
@@ -336,7 +373,11 @@ func TestLinkerValidation(t *testing.T) {
 			names = append(names, k)
 		}
 		_, err := Parser{Accessor: acc}.ParseFiles(names...)
-		if err == nil {
+		if tc.errMsg == "" {
+			if err != nil {
+				t.Errorf("case %d: expecting no error; instead got error %q", i, err)
+			}
+		} else if err == nil {
 			t.Errorf("case %d: expecting validation error %q; instead got no error", i, tc.errMsg)
 		} else if err.Error() != tc.errMsg {
 			t.Errorf("case %d: expecting validation error %q; instead got: %q", i, tc.errMsg, err)
